@@ -7,7 +7,7 @@
 //============================================================================
 
 #include <iostream>
-#include "shared/jbutil.h"
+#include "jbutil.h"
 
 
 int normDistanceFromNearestPoint(int x, int y, float width, float height, int *random_points, int N) {
@@ -40,10 +40,9 @@ void process(const std::string infile, const std::string outfile,
 	double t = jbutil::gettime();
 
 
-	int height = 2000, width = 2000;
-	int N = 200;
+	int height = 4000, width = 4000;
+	int N = 100;
 	int seed = 5;
-
 	jbutil::randgen rand(seed);
 
 	int random_points[N][2];
@@ -54,7 +53,6 @@ void process(const std::string infile, const std::string outfile,
 		random_points[i][0] = (int) rand.fval(0, width);
 		rand.advance();
 		random_points[i][1] = (int) rand.fval(0, height);
-
 	}
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
@@ -86,7 +84,7 @@ int main(int argc, char *argv[])
 	//		exit(1);
 	//	}
 	//	process<float> (argv[1], argv[2], atof(argv[3]), atoi(argv[4]));
-	process<float> ("", "out", 0.1, 1);
+	process<float> ("", "out.pgm", 0.1, 1);
 
 
 }

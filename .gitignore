@@ -31,4 +31,5 @@
 *.out
 *.app
 
-*out
+*out.*
+**Debug
