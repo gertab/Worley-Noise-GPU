@@ -9,7 +9,7 @@
 #include <iostream>
 #include "jbutil.h"
 
-#define position(x, y, z, width, depth) (x + width * (y + depth * z))
+#define position(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
 
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
@@ -19,25 +19,24 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
 
-	int shortest_norm_dist = 100;
+	int shortest_norm_dist = 255;
 
-	int c = 0;
 	for(int i = tile_x_pos - 1; i <= tile_x_pos + 1; i++) {
 		if(i >= 0 && tile_x_pos < DIV_CEIL(width, tile_size)) {
 			for(int j = tile_y_pos - 1; j <= tile_y_pos + 1; j++) {
 				if(j >= 0 && tile_y_pos < DIV_CEIL(height, tile_size)) {
 
-					c++;
 					for(int k = 0 ; k < N ; k++){
-						float x_point = random_points_x[position(i, j, k, DIV_CEIL(width, tile_size), N)];
-						float y_point = random_points_y[position(i, j, k, DIV_CEIL(width, tile_size), N)];
-						float x_dist = (x - x_point) / 2.0;
-						float y_dist = (y - y_point) / 2.0;
+
+						float x_point = random_points_x[position(i, j, k, DIV_CEIL(width, tile_size), DIV_CEIL(height, tile_size))];
+						float y_point = random_points_y[position(i, j, k, DIV_CEIL(width, tile_size), DIV_CEIL(height, tile_size))];
+						float x_dist = (x - x_point) / 1.5;
+						float y_dist = (y - y_point) / 1.5;
 						//
 						////		int distance = abs(x_dist) + abs(y_dist); // Manhattan distance
 						int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euchlidian distance
 
-						shortest_norm_dist = std::min(distance, shortest_norm_dist);
+			            shortest_norm_dist = std::min(distance, shortest_norm_dist);
 					}
 				}
 			}
@@ -47,10 +46,6 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 	return shortest_norm_dist;
 }
 
-//        x_dist = (pixel_x - point_x) / (img_width / 4)
-//        y_dist = (pixel_y - point_y) / (img_height / 4)
-//        norm_dist = math.sqrt(x_dist ** 2 + y_dist ** 2)
-
 template <class real>
 void process(const std::string infile, const std::string outfile,
   const real R, const int a)
@@ -58,10 +53,10 @@ void process(const std::string infile, const std::string outfile,
 	// start timer
 	double t = jbutil::gettime();
 
-	int height = 1400, width = 1528;
-	int N = 1;
-	int seed = 73;
-	int tile_size = 128;
+	int height = 2600, width = 1200;
+	int N = 4;
+	int seed = 878;
+	int tile_size = 200;
 	int tile_x = DIV_CEIL(width, tile_size);
 	int tile_y = DIV_CEIL(height, tile_size);
 
@@ -69,25 +64,54 @@ void process(const std::string infile, const std::string outfile,
 
 	int *random_points_x = (int *) malloc(tile_x * tile_y * N * sizeof(int));
 	int *random_points_y = (int *) malloc(tile_x * tile_y * N * sizeof(int));
+
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
+
+
+   for(int x = 0; x < width; x++) {
+	   for(int y = 0; y < height; y++) {
+		   image_out(0, y, x) = 255;
+	   }
+	}
+
+//	for(int x = 0; x < tile_x; x++) {
+//		for(int y = 0; y < tile_y; y++) {
+//			for(int i = 0; i < N; i++) {
+//				std::cout << "[" << x << ", " << y << ", " << i << "] : " << position(x, y, i, tile_x, tile_y) << std::endl;
+//			}
+//		}
+//	}
 
 	for(int x = 0; x < tile_x; x++) {
 		for(int y = 0; y < tile_y; y++) {
 			for(int i = 0; i < N; i++) {
 				rand.advance();
-				random_points_x[position(x, y, i, tile_x, N)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+				random_points_x[position(x, y, i, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
 				rand.advance();
-				random_points_y[position(x, y, i, tile_x, N)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+				random_points_y[position(x, y, i, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
 
-				std::cout << x * tile_size << ", " << random_points_x[position(x, y, i, tile_x, N)] << ", " << (x + 1) * tile_size << std::endl;
+//				int yy = random_points_y[position(x, y, i, tile_x, N)];
+//				int xx = random_points_x[position(x, y, i, tile_x, N)];
+
+//				if(xx < width && yy < height) {
+//					image_out(0, yy + 1, xx) = 0;
+//					image_out(0, yy, xx) = 0;
+//					image_out(0, yy - 1, xx) = 0;
+//					image_out(0, yy + 1, xx - 1) = 0;
+//					image_out(0, yy, xx - 1) = 0;
+//					image_out(0, yy - 1, xx - 1) = 0;
+//					image_out(0, yy + 1, xx + 1) = 0;
+//					image_out(0, yy, xx + 1) = 0;
+//					image_out(0, yy - 1, xx + 1) = 0;
+//				}
 			}
 		}
 	}
 
-
-	for(int i = 0; i < height; i++) {
-	   for(int j = 0; j < width; j++) {
-		   image_out(0, i, j) = normDistanceFromNearestPoint(j, i, width, height, random_points_x, random_points_y, tile_size, N)  % 255;
+   for(int x = 0; x < width; x++) {
+	   for(int y = 0; y < height; y++) {
+		   int val =  normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, N);
+		   image_out(0, y, x) = val;
 	   }
 	}
 
