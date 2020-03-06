@@ -9,23 +9,29 @@
 #include <iostream>
 #include "jbutil.h"
 
+#define position(x, y, z, width, depth) (x + width * (y + depth * z))
+
+
 
 int normDistanceFromNearestPoint(int x, int y, float width, float height, int *random_points, unsigned int N) {
 
-int shortest_norm_dist = 255;
+	int shortest_norm_dist = 255;
 
-for(unsigned int i = 0; i < N; i++) {
-	float x_point = random_points[i * 2];
-	float y_point = random_points[i * 2 + 1];
-	float x_dist = (x - x_point) / 2.0;
-	float y_dist = (y - y_point) / 2.0;
+	for(unsigned int i = 0; i < N; i++) {
+//		float x_point = random_points[i * 2];
+//		float y_point = random_points[i * 2 + 1];
+		float x_point = random_points[position(i, 0, 0, N, 1)];
+		float y_point = random_points[position(i, 1, 0, N, 1)];
+		float x_dist = (x - x_point) / 2.0;
+		float y_dist = (y - y_point) / 2.0;
 
-	int distance = sqrt(x_dist * x_dist + y_dist * y_dist);
+//		int distance = abs(x_dist) + abs(y_dist); // Manhattan distance
+		int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euchlidian distance
 
-	shortest_norm_dist = std::min(distance, shortest_norm_dist);
-}
+		shortest_norm_dist = std::min(distance, shortest_norm_dist);
+	}
 
-return shortest_norm_dist;
+	return shortest_norm_dist;
 }
 
 //        x_dist = (pixel_x - point_x) / (img_width / 4)
@@ -39,27 +45,28 @@ void process(const std::string infile, const std::string outfile,
 	// start timer
 	double t = jbutil::gettime();
 
+	int width = 3000, height = 2000;
+	unsigned int N = 90;
+	int seed = 70;
 
-	int height = 400, width = 800;
-	unsigned int N = 20;
-	int seed = 5;
 	jbutil::randgen rand(seed);
 
-	int random_points[N][2];
+	int *random_p = (int *) malloc(N * 2 * sizeof(int));
 
+	// TODO swap height and width
 
 	for(unsigned int i = 0; i <  N; i++) {
 		rand.advance();
-		random_points[i][0] = (int) rand.fval(0, width);
+		random_p[position(i, 0, 0, N, 1)] = (int) rand.fval(0, width);
 		rand.advance();
-		random_points[i][1] = (int) rand.fval(0, height);
+		random_p[position(i, 1, 0, N, 1)] = (int) rand.fval(0, height);
 	}
 
 	jbutil::image<int> image_out = jbutil::image<int>(width, height, 1, 255);
 
 	for(int i = 0; i < width; i++) {
 	   for(int j = 0; j < height; j++) {
-		   image_out(0, i, j) = normDistanceFromNearestPoint(i, j, width, height, (int *) random_points, N)  % 255;
+		   image_out(0, i, j) = normDistanceFromNearestPoint(i, j, width, height, random_p, N)  % 255;
 	   }
 	}
 

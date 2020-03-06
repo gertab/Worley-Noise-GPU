@@ -68,9 +68,9 @@ void process(const std::string infile, const std::string outfile,
 	double t = jbutil::gettime();
 
 
-	int height = 400, width = 800;
-	unsigned int N = 20;
-	int seed = 5;
+	int width = 4000, height = 4000;
+	unsigned int N = 512;
+	int seed = 70;
 
 	jbutil::randgen rand(seed);
 
