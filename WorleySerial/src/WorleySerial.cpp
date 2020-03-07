@@ -7,16 +7,21 @@
 //============================================================================
 
 #include <iostream>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
+#include <getopt.h>
 #include "jbutil.h"
 
-
+// Convert 3D position to the corresponding flattened 1D array position
 #define position(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
 
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
 
-int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
+int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int distance_order) {
 
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
@@ -27,6 +32,7 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 	// 0   = black
 	// 255 = white
 	int shortest_norm_dist = 255;
+	int second_shortest_norm_dist = 255;
 
 	// Check 3 by 3 tiles closest to current position
 	// This avoid having to brute force all points
@@ -44,37 +50,55 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 						float y_point = random_points_y[position(i, j, k, tile_x, tile_y)];
 						float x_dist = (x - x_point) / intensity;
 						float y_dist = (y - y_point) / intensity;
-						//
-//								int distance = abs(x_dist) + abs(y_dist); // Manhattan distance
+
+//						int distance = abs(x_dist) + abs(y_dist); // Manhattan distance
 						int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
 
-			            shortest_norm_dist = std::min(distance, shortest_norm_dist);
+						if(distance < shortest_norm_dist) {
+							second_shortest_norm_dist = shortest_norm_dist;
+							shortest_norm_dist = distance;
+						} else if(distance < second_shortest_norm_dist) {
+							second_shortest_norm_dist = distance;
+						}
 					}
 				}
 			}
 		}
 	}
 
-	return shortest_norm_dist;
+	if(distance_order == 1) {
+		return shortest_norm_dist;
+	} else {
+		return second_shortest_norm_dist;
+	}
 }
 
 void WorleyNoise(const std::string outfile, const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed) {
-	// start timer
-	double t = jbutil::gettime();
+		         const int tile_size, const int points_per_tile, const float intensity, int seed, const int distance_order) {
 
-	int N = points_per_tile;
-
-	int tile_x = DIV_CEIL(width, tile_size);
-	int tile_y = DIV_CEIL(height, tile_size);
+	assert(intensity >= 1);
+	assert(width > 0 && height > 0);
+	assert(tile_size > 0 && points_per_tile > 0);
+	assert(distance_order == 1 || distance_order == 2);
 
 	if(seed == 0)
 		seed = time(NULL);
 
+	std::cout << "Creating Worley Noise with size: " << width << "x" << height << ", tile size: "
+			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
+			  << ", seed: " << seed << ", distance order: " << distance_order << std::endl;
+
+	// start timer
+	double t = jbutil::gettime();
+
+	// Split space int tiles of size 'tile_size'
+	int tile_x = DIV_CEIL(width, tile_size);
+	int tile_y = DIV_CEIL(height, tile_size);
+
 	jbutil::randgen rand(seed);
 
-	int *random_points_x = (int *) malloc(tile_x * tile_y * N * sizeof(int));
-	int *random_points_y = (int *) malloc(tile_x * tile_y * N * sizeof(int));
+	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
@@ -87,14 +111,14 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	for(int x = 0; x < tile_x; x++) {
 		for(int y = 0; y < tile_y; y++) {
-			for(int z = 0; z < N; z++) {
+			for(int z = 0; z < points_per_tile; z++) {
 				rand.advance();
 				random_points_x[position(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
 				rand.advance();
 				random_points_y[position(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
 
-//				int yy = random_points_y[position(x, y, i, tile_x, N)];
-//				int xx = random_points_x[position(x, y, i, tile_x, N)];
+//				int yy = random_points_y[position(x, y, i, tile_x, points_per_tile)];
+//				int xx = random_points_x[position(x, y, i, tile_x, points_per_tile)];
 
 //				if(xx < width && yy < height) {
 //					image_out(0, yy + 1, xx) = 0;
@@ -113,7 +137,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
    for(int x = 0; x < width; x++) {
 	   for(int y = 0; y < height; y++) {
-		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, N, intensity);
+		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity, distance_order);
 	   }
 	}
 
@@ -128,24 +152,115 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 // Main program entry point
 
-int main(int argc, char *argv[]) {
-	std::cerr << "Worley Noise" << std::endl;
-	if (argc != 5)
-	{
-		std::cerr << "Usage: " << argv[0]
-		<< " <outfile> <width> <height> <tile size> <points per tile> <intensity> <seed>" << std::endl;
+//int main(int argc, char *argv[]) {
+//	std::cerr << "Worley Noise" << std::endl;
+//	if (argc != 5)
+//	{
+//		std::cerr << "Usage: " << argv[0]
+//		<< " <outfile> <width> <height> <tile size> <points per tile> <intensity> <seed>" << std::endl;
+//
+//		// Default
+//		int width = 1000;
+//		int height = 1500;
+//		int tile_size = 400;
+//		int points_per_tile = 2;
+//		int intensity = 2;
+//		int seed = 234324;
+//		int distance_order = 2;
+//		WorleyNoise("out1.pgm", width, height, tile_size, points_per_tile, intensity, seed, distance_order);
+//	} else {
+//		WorleyNoise(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atof(argv[6]), atoi(argv[7]), atoi(argv[8]));
+//	}
+//}
 
+int
+main (int argc, char **argv)
+{
+	// Default
+	char *out = "out.pgm";
+	int width = 1000;
+	int height = 1500;
+	int tile_size = 400;
+	int points_per_tile = 2;
+	float intensity = 2;
+	int seed = 234324;
+	int distance_order = 2;
+	int distance_type = 1;
 
-		// Default
-		int width = 1000;
-		int height = 1500;
-		int tile_size = 300;
-		int points_per_tile = 2;
-		int intensity = 2;
-		int seed = 234324;
-		WorleyNoise("out.pgm", width, height, tile_size, points_per_tile, intensity, seed);
-	} else {
-		WorleyNoise(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atof(argv[6]), atoi(argv[7]));
+	int index;
+	int c;
+
+	opterr = 0;
+
+    static struct option long_options[] = {
+        {"width",        required_argument, 0,  'w' },
+        {"height",       required_argument, 0,  'h' },
+        {"tilesize",     required_argument, 0,  't' },
+        {"pptile",       required_argument, 0,  'p' },
+        {"intensity",    required_argument, 0,  'i' },
+        {"seed",         required_argument, 0,  's' },
+        {"distanceorder",required_argument, 0,  'd' },
+        {"euclidean",    no_argument,       0,  'e' },
+        {"manhattan",    no_argument,       0,  'm' },
+
+        {0,           0,                 0,  0   }
+    };
+
+    int long_index =0;
+    while ((c = getopt_long(argc, argv, "w:h:t:p:i:s:d:em",
+                   long_options, &long_index )) != -1) {
+    	switch (c) {
+			case 'w':
+				width = atoi(optarg);
+				break;
+			case 'h':
+				height = atoi(optarg);
+				break;
+			case 't':
+				tile_size = atoi(optarg);
+				break;
+			case 'p':
+				points_per_tile = atoi(optarg);
+				break;
+			case 'i':
+				std::cout << optarg << std::endl;
+				intensity = atof(optarg);
+				std::cout << intensity << std::endl;
+				break;
+			case 's':
+				seed = atoi(optarg);
+				break;
+			case 'd':
+				distance_order = atoi(optarg);
+				break;
+			case 'e':
+				distance_type = 1;
+				break;
+			case 'm':
+				distance_type = 2;
+				break;
+			case '?':
+				if (optopt == 'w' || optopt == 'h' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
+					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+				else
+				if (isprint (optopt))
+					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+				else
+					fprintf (stderr,
+							"Unknown option character `\\x%x'.\n",
+							optopt);
+				return 1;
+			default:
+				abort ();
+		}
 	}
-}
 
+
+	for (index = optind; index < argc; index++) {
+		out = argv[index];
+	}
+
+	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
+
+	return 0;
+}
