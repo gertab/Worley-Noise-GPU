@@ -14,6 +14,9 @@
 #include <time.h>
 #include <getopt.h>
 #include "jbutil.h"
+#include "boost/program_options.hpp"
+#include "boost/program_options/options_description.hpp"
+
 
 // Convert 3D position to the corresponding flattened 1D array position
 #define position(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
@@ -152,30 +155,23 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 // Main program entry point
 
-//int main(int argc, char *argv[]) {
-//	std::cerr << "Worley Noise" << std::endl;
-//	if (argc != 5)
-//	{
-//		std::cerr << "Usage: " << argv[0]
-//		<< " <outfile> <width> <height> <tile size> <points per tile> <intensity> <seed>" << std::endl;
-//
-//		// Default
-//		int width = 1000;
-//		int height = 1500;
-//		int tile_size = 400;
-//		int points_per_tile = 2;
-//		int intensity = 2;
-//		int seed = 234324;
-//		int distance_order = 2;
-//		WorleyNoise("out1.pgm", width, height, tile_size, points_per_tile, intensity, seed, distance_order);
-//	} else {
-//		WorleyNoise(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atof(argv[6]), atoi(argv[7]), atoi(argv[8]));
-//	}
-//}
+void printHelp(char *input) {
+	std::cout << "Worley Noise\n"
+			  << "Usage: "<< input << " [FILE] [OPTIONS] \n"
+			  << "File should end with .pgm. List of options is shown below:\n"
+			  << " -w, --width         width of image\n"
+			  << " -b, --breath        breadth of image\n"
+			  << " -t, --tilesize      image split in square tiles of the chosen size\n"
+			  << " -p, --pptile        random pixels per tile\n"
+			  << " -i, --intensity     intensity\n"
+			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
+			  << " -d, --distanceorder distance order set to either 1 or 2; referring to first and second order distance respectively\n"
+			  << " -e, --euclidean     choose euchidean distance\n"
+			  << " -m, --manhattan     choose manhattan distance\n"
+			  << " -h, --help          display options\n";
+}
 
-int
-main (int argc, char **argv)
-{
+int main (int argc, char **argv) {
 	// Default
 	char *out = "out.pgm";
 	int width = 1000;
@@ -183,18 +179,18 @@ main (int argc, char **argv)
 	int tile_size = 400;
 	int points_per_tile = 2;
 	float intensity = 2;
-	int seed = 234324;
-	int distance_order = 2;
+	int seed = 0;
+	int distance_order = 1;
 	int distance_type = 1;
 
 	int index;
 	int c;
 
-	opterr = 0;
+//	opterr = 0;
 
     static struct option long_options[] = {
         {"width",        required_argument, 0,  'w' },
-        {"height",       required_argument, 0,  'h' },
+        {"breadth",      required_argument, 0,  'b' },
         {"tilesize",     required_argument, 0,  't' },
         {"pptile",       required_argument, 0,  'p' },
         {"intensity",    required_argument, 0,  'i' },
@@ -202,18 +198,22 @@ main (int argc, char **argv)
         {"distanceorder",required_argument, 0,  'd' },
         {"euclidean",    no_argument,       0,  'e' },
         {"manhattan",    no_argument,       0,  'm' },
-
+        {"help",         no_argument,       0,  'h' },
         {0,           0,                 0,  0   }
     };
 
     int long_index =0;
-    while ((c = getopt_long(argc, argv, "w:h:t:p:i:s:d:em",
+    while ((c = getopt_long(argc, argv, "w:hb:t:p:i:s:d:em",
                    long_options, &long_index )) != -1) {
     	switch (c) {
+			case 'h':
+				printHelp(argv[0]);
+				return 0;
+				break;
 			case 'w':
 				width = atoi(optarg);
 				break;
-			case 'h':
+			case 'b':
 				height = atoi(optarg);
 				break;
 			case 't':
@@ -223,9 +223,7 @@ main (int argc, char **argv)
 				points_per_tile = atoi(optarg);
 				break;
 			case 'i':
-				std::cout << optarg << std::endl;
 				intensity = atof(optarg);
-				std::cout << intensity << std::endl;
 				break;
 			case 's':
 				seed = atoi(optarg);
