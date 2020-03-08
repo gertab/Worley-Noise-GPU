@@ -170,12 +170,12 @@ void printHelp(char *input) {
 int main (int argc, char **argv) {
 	// Default
 	char *out = "out.pgm";
-	int width = 1000;
-	int height = 1500;
-	int tile_size = 400;
-	int points_per_tile = 2;
-	float intensity = 2;
-	int seed = 0;
+	int width = 2000;
+	int height = 2500;
+	int tile_size = 512;
+	int points_per_tile = 50;
+	float intensity = 1;
+	int seed = 32234;
 	int distance_order = 1;
 
 	int index;
