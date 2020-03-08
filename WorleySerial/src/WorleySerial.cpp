@@ -14,8 +14,6 @@
 #include <time.h>
 #include <getopt.h>
 #include "jbutil.h"
-#include "boost/program_options.hpp"
-#include "boost/program_options/options_description.hpp"
 
 
 // Convert 3D position to the corresponding flattened 1D array position
@@ -153,8 +151,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	std::cerr << "Time taken: " << t << "s" << std::endl;
 }
 
-// Main program entry point
-
 void printHelp(char *input) {
 	std::cout << "Worley Noise\n"
 			  << "Usage: "<< input << " [FILE] [OPTIONS] \n"
@@ -166,10 +162,10 @@ void printHelp(char *input) {
 			  << " -i, --intensity     intensity\n"
 			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
 			  << " -d, --distanceorder distance order set to either 1 or 2; referring to first and second order distance respectively\n"
-			  << " -e, --euclidean     choose euchidean distance\n"
-			  << " -m, --manhattan     choose manhattan distance\n"
 			  << " -h, --help          display options\n";
 }
+
+// Main program entry point
 
 int main (int argc, char **argv) {
 	// Default
@@ -181,12 +177,9 @@ int main (int argc, char **argv) {
 	float intensity = 2;
 	int seed = 0;
 	int distance_order = 1;
-	int distance_type = 1;
 
 	int index;
 	int c;
-
-//	opterr = 0;
 
     static struct option long_options[] = {
         {"width",        required_argument, 0,  'w' },
@@ -196,8 +189,6 @@ int main (int argc, char **argv) {
         {"intensity",    required_argument, 0,  'i' },
         {"seed",         required_argument, 0,  's' },
         {"distanceorder",required_argument, 0,  'd' },
-        {"euclidean",    no_argument,       0,  'e' },
-        {"manhattan",    no_argument,       0,  'm' },
         {"help",         no_argument,       0,  'h' },
         {0,           0,                 0,  0   }
     };
@@ -231,14 +222,8 @@ int main (int argc, char **argv) {
 			case 'd':
 				distance_order = atoi(optarg);
 				break;
-			case 'e':
-				distance_type = 1;
-				break;
-			case 'm':
-				distance_type = 2;
-				break;
 			case '?':
-				if (optopt == 'w' || optopt == 'h' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
+				if (optopt == 'w' || optopt == 'b' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				else
 				if (isprint (optopt))
