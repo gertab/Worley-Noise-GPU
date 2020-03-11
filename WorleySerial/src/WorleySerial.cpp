@@ -6,8 +6,12 @@
 // Description : Hello World in C++, Ansi-style
 //============================================================================
 
+
 #include "jbutil.h"
 #include "WorleySerial.h"
+#include "Tests.h"
+
+#define RUNTESTS
 
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
@@ -33,11 +37,13 @@ void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::r
 // Works the normalized distances from pixel (x, y) to the nearest point from (random_point_x, random_point_y)
 int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
 
+	assert(tile_size > 0);
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
 
 	int tile_x = DIV_CEIL(width, tile_size);
 	int tile_y = DIV_CEIL(height, tile_size);
+	assert(tile_x > 0 && tile_y > 0);
 
 	// 0   = black
 	// 255 = white
@@ -144,6 +150,9 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	   }
 	}
 
+	free(random_points_x);
+	free(random_points_y);
+
 	// stop timer
 	t = jbutil::gettime() - t;
 	// save image
@@ -168,9 +177,9 @@ void printHelp(char *input) {
 }
 
 // Main program entry point
-
 int main (int argc, char **argv) {
 	// TODO: Do simple 3x3 or 10x10 output
+#ifndef RUNTESTS
 
 	// Default
 	char *out = "out.pgm";
@@ -252,6 +261,9 @@ int main (int argc, char **argv) {
 	}
 
 	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse);
-
+#else
+	// Run test cases
+	runTests();
+#endif
 	return 0;
 }
