@@ -92,8 +92,7 @@ void normDistanceFromNearestPointSharedMem(int width, int height, int *random_po
 	int tile_x = DIV_CEIL(width, tile_size);
 	int tile_y = DIV_CEIL(height, tile_size);
 
-
-	if(threadIdx.x < 3 & threadIdx.y < 3) {
+	if(threadIdx.x < 9 * points_per_tile) {//)& threadIdx.y < 3 * points_per_tile) {
 		int i = tile_x_pos - 1 + threadIdx.x;
 
 		if(i >= 0 && tile_x_pos < tile_x) {
@@ -101,11 +100,12 @@ void normDistanceFromNearestPointSharedMem(int width, int height, int *random_po
 			int j = tile_y_pos - 1 + threadIdx.y;
 			if(j >= 0 && tile_y_pos < tile_y) {
 
-				for(int k = 0 ; k < points_per_tile ; k++){
+//				for(int k = 0 ; k < points_per_tile ; k++){
 
-					tiles_x[position(threadIdx.x, threadIdx.y, k, 3, 3)] = random_points_x[position(i, j, k, tile_x, tile_y)];
+				int k = threadIdx.x / points_per_tile;
+					tiles_x[position(threadIdx.x % 3, threadIdx.y % 3, k, 3, 3)] = random_points_x[position(i, j, k, tile_x, tile_y)];
 
-				}
+//				}
 			}
 		}
 
@@ -219,8 +219,8 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	dim3 blocks(32, 32);
 
     int sharedMemory = 9 * points_per_tile * sizeof(int);
-    normDistanceFromNearestPointSharedMem<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
-//	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
+//    normDistanceFromNearestPointSharedMem<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
 //    gpuErrchk( cudaPeekAtLastError() );
 //    gpuErrchk( cudaDeviceSynchronize() );
 
@@ -459,8 +459,16 @@ int main (int argc, char **argv) {
 		out = argv[index];
 	}
 
-	Performance(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
-//	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
+//	for(int x = 0; x < 3; x++) {
+//		for(int y = 0; y < 3; y++) {
+//			for(int z = 0; z < 3; z++) {
+//				std::cout << x << ", " << y << " " << position(x,y,z, 3, 3) << "\n";
+//			}
+//		}
+//	}
+
+//	Performance(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
+	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
 
 	return 0;
 }

@@ -17,11 +17,30 @@
 
 
 // Convert 3D position to the corresponding flattened 1D array position
-#define position(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
+#define position3D(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
 
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
 
+
+void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+	assert(random_points_x != nullptr && random_points_y != nullptr);
+	assert(tile_x > 0 && tile_y > 0);
+	assert(tile_size > 0);
+	assert(points_per_tile > 0);
+
+	for(int x = 0; x < tile_x; x++) {
+		for(int y = 0; y < tile_y; y++) {
+			for(int z = 0; z < points_per_tile; z++) {
+				rand.advance();
+				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+				rand.advance();
+				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+			}
+		}
+	}
+
+}
 int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int distance_order) {
 
 	int tile_x_pos = x / tile_size;
@@ -47,8 +66,8 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 					for(int k = 0 ; k < points_per_tile ; k++){
 						// Checking all points in current tile
 
-						float x_point = random_points_x[position(i, j, k, tile_x, tile_y)];
-						float y_point = random_points_y[position(i, j, k, tile_x, tile_y)];
+						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y)];
+						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y)];
 						float x_dist = (x - x_point) / intensity;
 						float y_dist = (y - y_point) / intensity;
 
@@ -110,31 +129,33 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 //	   }
 //	}
 
-	for(int x = 0; x < tile_x; x++) {
-		for(int y = 0; y < tile_y; y++) {
-			for(int z = 0; z < points_per_tile; z++) {
-				rand.advance();
-				random_points_x[position(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-				rand.advance();
-				random_points_y[position(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
-//				int yy = random_points_y[position(x, y, i, tile_x, points_per_tile)];
-//				int xx = random_points_x[position(x, y, i, tile_x, points_per_tile)];
-
-//				if(xx < width && yy < height) {
-//					image_out(0, yy + 1, xx) = 0;
-//					image_out(0, yy, xx) = 0;
-//					image_out(0, yy - 1, xx) = 0;
-//					image_out(0, yy + 1, xx - 1) = 0;
-//					image_out(0, yy, xx - 1) = 0;
-//					image_out(0, yy - 1, xx - 1) = 0;
-//					image_out(0, yy + 1, xx + 1) = 0;
-//					image_out(0, yy, xx + 1) = 0;
-//					image_out(0, yy - 1, xx + 1) = 0;
-//				}
-			}
-		}
-	}
+//	for(int x = 0; x < tile_x; x++) {
+//		for(int y = 0; y < tile_y; y++) {
+//			for(int z = 0; z < points_per_tile; z++) {
+//				rand.advance();
+//				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+//				rand.advance();
+//				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+//
+////				int yy = random_points_y[position3D(x, y, i, tile_x, points_per_tile)];
+////				int xx = random_points_x[position3D(x, y, i, tile_x, points_per_tile)];
+//
+////				if(xx < width && yy < height) {
+////					image_out(0, yy + 1, xx) = 0;
+////					image_out(0, yy, xx) = 0;
+////					image_out(0, yy - 1, xx) = 0;
+////					image_out(0, yy + 1, xx - 1) = 0;
+////					image_out(0, yy, xx - 1) = 0;
+////					image_out(0, yy - 1, xx - 1) = 0;
+////					image_out(0, yy + 1, xx + 1) = 0;
+////					image_out(0, yy, xx + 1) = 0;
+////					image_out(0, yy - 1, xx + 1) = 0;
+////				}
+//			}
+//		}
+//	}
 
    for(int x = 0; x < width; x++) {
 	   for(int y = 0; y < height; y++) {
@@ -168,14 +189,16 @@ void printHelp(char *input) {
 // Main program entry point
 
 int main (int argc, char **argv) {
+	// TODO: Do simple 3x3 or 10x10 output
+
 	// Default
 	char *out = "out.pgm";
 	int width = 2000;
 	int height = 2500;
 	int tile_size = 512;
-	int points_per_tile = 50;
+	int points_per_tile = 5;
 	float intensity = 1;
-	int seed = 32234;
+	int seed = 0;
 	int distance_order = 1;
 
 	int index;
@@ -190,7 +213,7 @@ int main (int argc, char **argv) {
         {"seed",         required_argument, 0,  's' },
         {"distanceorder",required_argument, 0,  'd' },
         {"help",         no_argument,       0,  'h' },
-        {0,           0,                 0,  0   }
+        {0,           	 0,                 0,  0   }
     };
 
     int long_index =0;
