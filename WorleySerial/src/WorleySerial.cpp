@@ -2,8 +2,7 @@
 // Name        : WorleySerial.cpp
 // Author      : Gerard Tabone
 // Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : Worley noise simulation
 //============================================================================
 
 
@@ -11,7 +10,7 @@
 #include "WorleySerial.h"
 #include "Tests.h"
 
-#define RUNTESTS
+//#define RUNTESTS
 
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
@@ -101,13 +100,14 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	// Split space int tiles of size 'tile_size'
 	int tile_x = DIV_CEIL(width, tile_size);
 	int tile_y = DIV_CEIL(height, tile_size);
+	assert(tile_x > 0 && tile_y > 0);
 
 	jbutil::randgen rand(seed);
 
 	// Random points
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-
+	// Generate random points
 	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
@@ -164,7 +164,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 void printHelp(char *input) {
 	std::cout << "Worley Noise\n"
-			  << "Usage: "<< input << " [FILE] [OPTIONS] \n"
+			  << "\tUsage: "<< input << " [FILE] [OPTIONS] \n\n"
 			  << "File should end with .pgm. List of options is shown below:\n"
 			  << " -w, --width         width of image\n"
 			  << " -b, --breath        breadth of image\n"
@@ -178,11 +178,9 @@ void printHelp(char *input) {
 
 // Main program entry point
 int main (int argc, char **argv) {
-	// TODO: Do simple 3x3 or 10x10 output
 #ifndef RUNTESTS
-
 	// Default
-	char *out = "out.pgm";
+	char const *out = "out.pgm";
 	int width = 2000;
 	int height = 2500;
 	int tile_size = 512;
@@ -211,28 +209,66 @@ int main (int argc, char **argv) {
                    long_options, &long_index )) != -1) {
     	switch (c) {
 			case 'h':
+			{
 				printHelp(argv[0]);
 				return 0;
 				break;
-			case 'x':
-				printHelp(argv[0]);
-				return 0;
-				break;
+			}
 			case 'w':
-				width = atoi(optarg);
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					width = tmp;
+				} else {
+					std::cout << "Width must be > 0\n";
+				}
 				break;
+			}
 			case 'b':
-				height = atoi(optarg);
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					height = tmp;
+				} else {
+					std::cout << "height must be > 0\n";
+				}
 				break;
+			}
 			case 't':
-				tile_size = atoi(optarg);
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					tile_size = tmp;
+				} else {
+					std::cout << "tile size must be > 0\n";
+				}
 				break;
+			}
 			case 'p':
-				points_per_tile = atoi(optarg);
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					points_per_tile = tmp;
+				} else {
+					std::cout << "points per tile must be > 0\n";
+				}
 				break;
+			}
 			case 'i':
-				intensity = atof(optarg);
+			{
+				float tmp = atof(optarg);
+
+				if(tmp >= 1) {
+					intensity = tmp;
+				} else {
+					std::cout << "intensity must be >= 1\n";
+				}
 				break;
+			}
 			case 's':
 				seed = atoi(optarg);
 				break;

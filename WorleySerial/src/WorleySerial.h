@@ -2,8 +2,7 @@
 // Name        : WorleySerial.h
 // Author      : Gerard Tabone
 // Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : Worley noise simulation header
 //============================================================================
 
 #include <iostream>

@@ -2,17 +2,13 @@
 // Name        : Tests.cpp
 // Author      : Gerard Tabone
 // Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : Tests for worley noise
 //============================================================================
 
 #include "Tests.h"
 #include "WorleySerial.h"
 
 void runTests() {
-
-	// TODO: Do simple 3x3 or 10x10 output
-
 	std::cout << "Running test cases\n";
 	test1();
 	test2();
@@ -92,7 +88,7 @@ void test2() {
 	assert(random_points_x[0] == 22);
 	assert(random_points_y[0] == 1);
 
-	// Correct output
+	// Expected output
 	int result[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 3, 3, 3, 4, 5, 5, 6, 7, 8, 9, 4, 4, 4, 5, 5, 6, 7, 8, 8, 9, 5, 5, 5, 5, 6, 7, 7, 8, 9, 10, 6, 6, 6, 6, 7, 7, 8, 9, 10, 10, 7, 7, 7, 7, 8, 8, 9, 9, 10, 11, 8, 8, 8, 8, 8, 9, 10, 10, 11, 12, 9, 9, 9, 9, 9, 10, 10, 11, 12, 12};
 	int i = 0;
 	for(int x = 0; x < width; x++) {
