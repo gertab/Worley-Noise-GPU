@@ -15,7 +15,7 @@ void runTests() {
 
 	testDIVCEIL();
 	testPosition3D();
-	std::cout << "End of tests\n";
+	std::cout << "End of tests. No problems found.\n";
 }
 
 void test1() {
