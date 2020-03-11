@@ -6,23 +6,11 @@
 // Description : Hello World in C++, Ansi-style
 //============================================================================
 
-#include <iostream>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
-#include <getopt.h>
 #include "jbutil.h"
+#include "WorleySerial.h"
 
-
-// Convert 3D position to the corresponding flattened 1D array position
-#define position3D(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
-
-// ceil( x / y )
-#define DIV_CEIL(x, y) ((x + y - 1) / y)
-
-
+// Fills random_points_x and random_points_y with random numbers
+// random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
 void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
 	assert(random_points_x != nullptr && random_points_y != nullptr);
 	assert(tile_x > 0 && tile_y > 0);
@@ -41,7 +29,9 @@ void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::r
 	}
 
 }
-int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int distance_order) {
+
+// Works the normalized distances from pixel (x, y) to the nearest point from (random_point_x, random_point_y)
+int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
 
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
@@ -52,9 +42,8 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 	// 0   = black
 	// 255 = white
 	int shortest_norm_dist = 255;
-	int second_shortest_norm_dist = 255;
 
-	// Check 3 by 3 tiles closest to current position
+	// Check only 3 by 3 tiles closest to current pixel
 	// This avoid having to brute force all points
 	for(int i = tile_x_pos - 1; i <= tile_x_pos + 1; i++) {
 		if(i >= 0 && tile_x_pos < tile_x) {
@@ -75,10 +64,7 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 						int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
 
 						if(distance < shortest_norm_dist) {
-							second_shortest_norm_dist = shortest_norm_dist;
 							shortest_norm_dist = distance;
-						} else if(distance < second_shortest_norm_dist) {
-							second_shortest_norm_dist = distance;
 						}
 					}
 				}
@@ -86,27 +72,22 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 		}
 	}
 
-	if(distance_order == 1) {
-		return shortest_norm_dist;
-	} else {
-		return second_shortest_norm_dist;
-	}
+	return shortest_norm_dist;
 }
 
 void WorleyNoise(const std::string outfile, const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const int distance_order) {
+		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
 
 	assert(intensity >= 1);
 	assert(width > 0 && height > 0);
 	assert(tile_size > 0 && points_per_tile > 0);
-	assert(distance_order == 1 || distance_order == 2);
 
 	if(seed == 0)
-		seed = time(NULL);
+		seed = time(NULL); // Random seed
 
 	std::cout << "Creating Worley Noise with size: " << width << "x" << height << ", tile size: "
 			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
-			  << ", seed: " << seed << ", distance order: " << distance_order << std::endl;
+			  << ", seed: " << seed << std::endl;
 
 	// start timer
 	double t = jbutil::gettime();
@@ -117,8 +98,11 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	jbutil::randgen rand(seed);
 
+	// Random points
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+
+	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
@@ -128,38 +112,35 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 //		   image_out(0, y, x) = 255;
 //	   }
 //	}
-
-	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
-
 //	for(int x = 0; x < tile_x; x++) {
 //		for(int y = 0; y < tile_y; y++) {
 //			for(int z = 0; z < points_per_tile; z++) {
-//				rand.advance();
-//				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-//				rand.advance();
-//				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+//				int yy = random_points_y[position3D(x, y, i, tile_x, points_per_tile)];
+//				int xx = random_points_x[position3D(x, y, i, tile_x, points_per_tile)];
 //
-////				int yy = random_points_y[position3D(x, y, i, tile_x, points_per_tile)];
-////				int xx = random_points_x[position3D(x, y, i, tile_x, points_per_tile)];
-//
-////				if(xx < width && yy < height) {
-////					image_out(0, yy + 1, xx) = 0;
-////					image_out(0, yy, xx) = 0;
-////					image_out(0, yy - 1, xx) = 0;
-////					image_out(0, yy + 1, xx - 1) = 0;
-////					image_out(0, yy, xx - 1) = 0;
-////					image_out(0, yy - 1, xx - 1) = 0;
-////					image_out(0, yy + 1, xx + 1) = 0;
-////					image_out(0, yy, xx + 1) = 0;
-////					image_out(0, yy - 1, xx + 1) = 0;
-////				}
+//				if(xx < width && yy < height) {
+//					image_out(0, yy + 1, xx) = 0;
+//					image_out(0, yy, xx) = 0;
+//					image_out(0, yy - 1, xx) = 0;
+//					image_out(0, yy + 1, xx - 1) = 0;
+//					image_out(0, yy, xx - 1) = 0;
+//					image_out(0, yy - 1, xx - 1) = 0;
+//					image_out(0, yy + 1, xx + 1) = 0;
+//					image_out(0, yy, xx + 1) = 0;
+//					image_out(0, yy - 1, xx + 1) = 0;
+//				}
 //			}
 //		}
 //	}
 
    for(int x = 0; x < width; x++) {
 	   for(int y = 0; y < height; y++) {
-		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity, distance_order);
+		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+
+		   if(reverse) {
+			   // Revere image: white -> black, black -> white
+			   image_out(0, y, x) = 255 - image_out(0, y, x);
+		   }
 	   }
 	}
 
@@ -182,7 +163,7 @@ void printHelp(char *input) {
 			  << " -p, --pptile        random pixels per tile\n"
 			  << " -i, --intensity     intensity\n"
 			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
-			  << " -d, --distanceorder distance order set to either 1 or 2; referring to first and second order distance respectively\n"
+			  << " -r, --reverse       the colours of the image will be inverted\n"
 			  << " -h, --help          display options\n";
 }
 
@@ -199,7 +180,7 @@ int main (int argc, char **argv) {
 	int points_per_tile = 5;
 	float intensity = 1;
 	int seed = 0;
-	int distance_order = 1;
+	bool inverse = false;
 
 	int index;
 	int c;
@@ -211,16 +192,20 @@ int main (int argc, char **argv) {
         {"pptile",       required_argument, 0,  'p' },
         {"intensity",    required_argument, 0,  'i' },
         {"seed",         required_argument, 0,  's' },
-        {"distanceorder",required_argument, 0,  'd' },
+        {"reverse",      no_argument, 		0,  'r' },
         {"help",         no_argument,       0,  'h' },
         {0,           	 0,                 0,  0   }
     };
 
     int long_index =0;
-    while ((c = getopt_long(argc, argv, "w:hb:t:p:i:s:d:em",
+    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rh",
                    long_options, &long_index )) != -1) {
     	switch (c) {
 			case 'h':
+				printHelp(argv[0]);
+				return 0;
+				break;
+			case 'x':
 				printHelp(argv[0]);
 				return 0;
 				break;
@@ -242,8 +227,8 @@ int main (int argc, char **argv) {
 			case 's':
 				seed = atoi(optarg);
 				break;
-			case 'd':
-				distance_order = atoi(optarg);
+			case 'r':
+				inverse = true;
 				break;
 			case '?':
 				if (optopt == 'w' || optopt == 'b' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
@@ -266,7 +251,7 @@ int main (int argc, char **argv) {
 		out = argv[index];
 	}
 
-	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, distance_order);
+	WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse);
 
 	return 0;
 }
