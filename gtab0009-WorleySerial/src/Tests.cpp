@@ -40,18 +40,21 @@ void test1() {
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 
-	// Ensuring constant random point: (2, 2)
-	random_points_x[0] = 2;
-	random_points_y[0] = 2;
+	// Ensuring constant random point: (0, 0)
+	random_points_x[0] = 0;
+	random_points_y[0] = 0;
 
 	// Correct output
-	int result[] = {0, 1, 2, 1, 1, 1, 2, 1, 0};
+	int result[3][3] = {{0, 1, 2},
+						{1, 1, 2},
+						{2, 2, 2}};
+
 	int i = 0;
-	for(int x = 0; x < width; x++) {
-		for(int y = 0; y < height; y++) {
+	for(int y = 0; y < height; y++) {
+		for(int x = 0; x < width; x++) {
 		   int p = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
-		   assert(result[i] == p);
+		   assert(result[y][x] == p);
 		   i++;
 		}
 	}
@@ -61,6 +64,54 @@ void test1() {
 }
 
 void test2() {
+	// Testing small dataset, with image 4 x 4 having two point per tile
+
+	// Default
+	int width = 4;
+	int height = 4;
+	int tile_size = 32;
+	int points_per_tile = 2;
+	float intensity = 1;
+	int seed = 123;
+
+	int tile_x = DIV_CEIL(width, tile_size);
+	assert(tile_x == 1);
+	int tile_y = DIV_CEIL(height, tile_size);
+	assert(tile_y == 1);
+
+	jbutil::randgen rand(seed);
+
+	// Random points
+	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+
+	// Ensuring constant random point: (0, 0) and (3, 3)
+	random_points_x[0] = 0;
+	random_points_y[0] = 0;
+	random_points_x[1] = 3;
+	random_points_y[1] = 3;
+
+	// Correct output
+	int result[4][4] = {{0, 1, 2, 3},
+						{1, 1, 2, 2},
+						{2, 2, 1, 1},
+						{3, 2, 1, 0}};
+
+	int i = 0;
+	for(int y = 0; y < height; y++) {
+		for(int x = 0; x < width; x++) {
+		   int p = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+
+		   assert(result[y][x] == p);
+		   i++;
+		}
+	}
+
+	free(random_points_x);
+	free(random_points_y);
+}
+
+void test3() {
 	// Testing larger dataset, with image 10 x 10
 
 	// Default

@@ -111,33 +111,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
-//
-//   for(int x = 0; x < width; x++) {
-//	   for(int y = 0; y < height; y++) {
-//		   image_out(0, y, x) = 255;
-//	   }
-//	}
-//	for(int x = 0; x < tile_x; x++) {
-//		for(int y = 0; y < tile_y; y++) {
-//			for(int z = 0; z < points_per_tile; z++) {
-//				int yy = random_points_y[position3D(x, y, i, tile_x, points_per_tile)];
-//				int xx = random_points_x[position3D(x, y, i, tile_x, points_per_tile)];
-//
-//				if(xx < width && yy < height) {
-//					image_out(0, yy + 1, xx) = 0;
-//					image_out(0, yy, xx) = 0;
-//					image_out(0, yy - 1, xx) = 0;
-//					image_out(0, yy + 1, xx - 1) = 0;
-//					image_out(0, yy, xx - 1) = 0;
-//					image_out(0, yy - 1, xx - 1) = 0;
-//					image_out(0, yy + 1, xx + 1) = 0;
-//					image_out(0, yy, xx + 1) = 0;
-//					image_out(0, yy - 1, xx + 1) = 0;
-//				}
-//			}
-//		}
-//	}
-
    for(int x = 0; x < width; x++) {
 	   for(int y = 0; y < height; y++) {
 		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
@@ -195,9 +168,8 @@ void PerformanceCheck(const int width, const int height,
 
 	int count = 0;
 
-	// Loop for at lease 60s
+	// Loop for at least 60s
 	while((jbutil::gettime() - t) < 60) {
-
 		count++;
 
 		for(int x = 0; x < width; x++) {
@@ -205,7 +177,6 @@ void PerformanceCheck(const int width, const int height,
 				normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 			}
 		}
-
 	}
 
 	free(random_points_x);
@@ -366,11 +337,12 @@ int main (int argc, char **argv) {
 	if(!performance) {
 		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse);
 	} else {
+		// No outputs
 		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse);
 	}
 
 #else
-	// Run test cases
+	// Run test cases in Debug mode
 	runTests();
 #endif
 	return 0;

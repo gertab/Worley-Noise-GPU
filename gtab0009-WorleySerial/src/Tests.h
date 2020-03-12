@@ -9,5 +9,6 @@
 void runTests();
 void test1();
 void test2();
+void test3();
 void testDIVCEIL();
 void testPosition3D();
