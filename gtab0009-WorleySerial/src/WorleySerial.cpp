@@ -23,9 +23,7 @@ void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::r
 	for(int x = 0; x < tile_x; x++) {
 		for(int y = 0; y < tile_y; y++) {
 			for(int z = 0; z < points_per_tile; z++) {
-				rand.advance();
 				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-				rand.advance();
 				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
 			}
 		}
