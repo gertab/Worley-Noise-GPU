@@ -1,3 +1,4 @@
 /Release/
 
 *.pgm
+/Tests/

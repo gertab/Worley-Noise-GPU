@@ -187,7 +187,6 @@ void PerformanceCheck(const int width, const int height,
 	// show time taken
 	std::cout << "\n\n";
 	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << "s" << std::endl;
-
 }
 
 void printHelp(char *input) {
@@ -211,7 +210,11 @@ void printHelp(char *input) {
 
 // Main program entry point
 int main (int argc, char **argv) {
-#ifndef RUNTESTS
+#ifdef RUNTESTS
+	// Run test cases in Debug mode
+	runTests();
+
+#else
 	// Default
 	char const *out = "out.pgm";
 	int width = 2000;
@@ -340,10 +343,6 @@ int main (int argc, char **argv) {
 		// No outputs
 		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse);
 	}
-
-#else
-	// Run test cases in Debug mode
-	runTests();
 #endif
 	return 0;
 }
