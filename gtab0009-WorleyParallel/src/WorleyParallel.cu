@@ -10,23 +10,6 @@
 #include "WorleyParallel.h"
 //#include "Tests.h"
 
-__host__ __device__
-void print3DMatrix(int *data, int width, int height, int depth) {
-
-	printf("Printing data\n");
-	for(int z = 0; z < depth; z++) {
-		printf("\ndepth: %d\n", z);
-
-		for(int y = 0; y < height; y++) {
-			for(int x = 0; x < width; x++) {
-				printf("%10d ", data[position3D(x, y, z, width, height)]);
-			}
-
-			printf("\n");
-		}
-	}
-}
-
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
 void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
@@ -271,8 +254,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 }
 
 // Performance checking for Worley Noise
-
-// Creates Worley Noise according to the options
+// Timings exclude memory transfer to/from device
 void PerformanceCheck(const int width, const int height,
 		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
 
@@ -283,7 +265,7 @@ void PerformanceCheck(const int width, const int height,
 	if(seed == 0)
 		seed = time(NULL); // Random seed
 
-	std::cout << "Creating Worley Noise using the GPU, with size: " << width << "x" << height << ", tile size: "
+	std::cout << "Performance testing Worley Noise using the GPU, with size: " << width << "x" << height << ", tile size: "
 			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
 			  << ", seed: " << seed << std::endl;
 
@@ -329,8 +311,8 @@ void PerformanceCheck(const int width, const int height,
 	while((jbutil::gettime() - t) < 60) {
 		count++;
 
-		// Naive approach
-		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+//		// Naive approach
+//		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 
 		// Using shared memory
 		normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
@@ -394,7 +376,6 @@ int main (int argc, char **argv) {
 	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
-
 
 	int index;
 	int c;
@@ -500,7 +481,6 @@ int main (int argc, char **argv) {
 				abort ();
 		}
 	}
-
 
 	for (index = optind; index < argc; index++) {
 		out = argv[index];

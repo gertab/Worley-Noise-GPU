@@ -31,3 +31,21 @@ void printHelp(char *input);
 
 __global__ void normDistanceFromNearestPoint(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result);
 __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result);
+
+
+__host__ __device__
+static void print3DMatrix(int *data, int width, int height, int depth) {
+
+	printf("Printing data\n");
+	for(int z = 0; z < depth; z++) {
+		printf("\ndepth: %d\n", z);
+
+		for(int y = 0; y < height; y++) {
+			for(int x = 0; x < width; x++) {
+				printf("%10d ", data[position3D(x, y, z, width, height)]);
+			}
+
+			printf("\n");
+		}
+	}
+}
