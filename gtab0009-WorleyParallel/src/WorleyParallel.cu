@@ -118,53 +118,6 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 	int *tiles_x = s;
 	int *tiles_y = (int*) &tiles_x[9 * points_per_tile];
 
-//	if(x == 0 && y == 0) {
-////		for(int i = 0; i < 3; i++) {
-////			for(int j = 0; j < 3; j++) {
-////				for(int k = 0; k < points_per_tile; k++) {
-////					tiles_x[position3D(i, j, k, 3, 3)] = 0;
-////				}
-////			}
-////		}
-////		tiles_x[position3D(0, 0, 0, 3, 3)] = 99;
-////		tiles_x[position3D(1, 0, 1, 3, 3)] = 199;
-////		tiles_x[position3D(2, 0, 2, 3, 3)] = 299;
-////		tiles_x[position3D(2, 2, 3, 3, 3)] = 222;
-////
-////		printf("AAAAAA\n");
-////		print3DMatrix(tiles_x, 3, 3, points_per_tile);
-////
-////
-//
-//		tiles_y[position3D(0, 0, 0, 3, 3)] = 99;
-//		tiles_y[position3D(1, 0, 1, 3, 3)] = 199;
-//		tiles_y[position3D(2, 0, 2, 3, 3)] = 299;
-//		tiles_y[position3D(2, 2, 3, 3, 3)] = 222;
-//
-//		printf("BBBB\n");
-//
-//		for(int i = 0; i < 9 * points_per_tile; i++) {
-//			printf("[[%d]]\n", i);
-////			tiles_y[i] = i * 1000;
-//			tiles_x[i] = i;
-//		}
-//
-////		for(int i = 0; i < 3; i++) {
-////			for(int j = 0; j < 3; j++) {
-////				for(int k = 0; k < points_per_tile; k++) {
-////					tiles_y[position3D(i, j, k, 3, 3)] = 0;
-////				}
-////			}
-////		}
-//		printf("YYYY\n");
-//		print3DMatrix(tiles_y, 3, 3, points_per_tile);
-//
-//		printf("XXXX\n");
-//		print3DMatrix(tiles_x, 3, 3, points_per_tile);
-//	}
-//
-
-
 	// Each thread in a block has a different index;
 	int indexInBlock = threadIdx.x + blockDim.x * threadIdx.y;
 	// todo: Needs to ensure that max(indexInBlock) >= (9 * points_per_tile)
@@ -181,14 +134,6 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 		int shared_tile_x_pos = shared_memory_x + tile_x_pos - 1;
 		int shared_tile_y_pos = shared_memory_y + tile_y_pos - 1;
 
-//		if(shared_memory_x == 0 && shared_memory_y == 0 && tileToGet_z == 1) {
-//			if(x < 32 && y < 32) {
-//				printf("Setting (%d, %d, %d) in thread (%d, %d) from %d\n", shared_memory_x, shared_memory_y, tileToGet_z, x, y, tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)]);
-//
-//				printf("%d, tileToGet=%d x=%d, y=%d tile_x_pos=%d tile_y_pos=%d z=%d\n", indexInBlock, tileToGet, shared_tile_x_pos, shared_tile_y_pos, tile_x_pos, tile_y_pos, tileToGet_z);
-//			}
-//		}
-
 		// Check if within range
 		if(shared_tile_x_pos >= 0 && shared_tile_x_pos < tile_x
 				&& shared_tile_y_pos >= 0 && shared_tile_y_pos < tile_y) {
@@ -199,18 +144,9 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 
 		} else {
 			// Set remaining to 0
-
-//			if(x == 1&& y == 0)
-//				printf("yupppp\n");
-
 			tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
 			tiles_y[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
 		}
-
-//		if(shared_memory_x == 0 && shared_memory_y == 0 && tileToGet_z == 1) {
-//			if(x < 32 && y < 32)
-//				printf("Setting (%d, %d, %d) in thread (%d, %d) to %d\n", shared_memory_x, shared_memory_y, tileToGet_z, x, y, tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)]);
-//		}
 	}
 
 
@@ -218,22 +154,6 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
     if(x >= width || y >= height) {
     	return;
     }
-
-//    if(x == 0 && y == 0) {
-////    	for(int i = 0; i < 3; i++) {
-////    		for(int j = 0; j < 3; j++) {
-////    		    for(int k = 0; k < points_per_tile; k++) {
-////    		    	tiles_x[position3D(i, j, k, 3, 3)] = 0;
-////    		    }
-////			}
-////    	}
-////    	tiles_x[position3D(0, 1, 0, 3, 3)] = 99;
-////    	tiles_x[position3D(0, 1, 1, 3, 3)] = 199;
-////    	tiles_x[position3D(0, 1, 2, 3, 3)] = 299;
-//    	printf("OUTTT\n");
-//    	print3DMatrix(tiles_x, 3, 3, points_per_tile);
-//    	print3DMatrix(tiles_y, 3, 3, points_per_tile);
-//    }
 
     __syncthreads();
 
@@ -244,43 +164,24 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 
 	// Check only 3 by 3 tiles closest to current pixel
 	// This avoid having to brute force all points
-//	for(int i = tile_x_pos - 1, ii = 0; i <= tile_x_pos + 1; i++, ii++) {
-//		if(i >= 0 && tile_x_pos < tile_x) {
-//
-//			for(int j = tile_y_pos - 1, jj = 0; j <= tile_y_pos + 1; j++, jj++) {
-//				if(j >= 0 && tile_y_pos < tile_y) {
 	for(int i = 0; i < 3; i++) {
 			for(int j = 0; j < 3; j++) {
 					for(int k = 0 ; k < points_per_tile; k++){
 						// Checking all points in current tile
 
-//						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y)];
-//						int y_point = random_points_y[position3D(i, j, k, tile_x, tile_y)];
 						float x_point = tiles_x[position3D(i, j, k, 3, 3)];
 						int y_point = tiles_y[position3D(i, j, k, 3, 3)];
-
-//						if(x_point == x_point2) {
-//							printf("Same\n");
-//						} else {
-//							printf("Not same: %d %d\n", y_point, y_point2);
-//						}
 
 						if(!(x_point == 0 && y_point == 0)) {
 							float x_dist = (x - x_point) / intensity;
 							float y_dist = (y - y_point) / intensity;
-//							float x_dist = 0;
-//							float y_dist = 0;
 
 							int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
 
 							if(distance < shortest_norm_dist) {
 								shortest_norm_dist = distance;
 							}
-//						} else {
-//							printf("EEE\n");
 						}
-//					}
-//				}
 			}
 		}
 	}
@@ -320,20 +221,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	// Generate random points
 	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
-
-//	for(int i = 0; i < tile_x; i++) {
-//		for(int j = 0; j < tile_y; j++) {
-//			for(int k = 0; k < points_per_tile; k++) {
-//				random_points_x[position3D(i, j, k, tile_x, tile_y)] = 0;
-//			}
-//		}
-//	}
-//	random_points_x[position3D(0, 1, 0, tile_x, tile_y)] = 99;
-//	random_points_x[position3D(0, 1, 1, tile_x, tile_y)] = 199;
-//	random_points_x[position3D(0, 1, 2, tile_x, tile_y)] = 299;
-//	random_points_x[position3D(0, 0, 0, tile_x, tile_y)] = 1;
-//	random_points_x[position3D(0, 0, 1, tile_x, tile_y)] = 2;
-//	random_points_x[position3D(0, 0, 2, tile_x, tile_y)] = 2;
 
 	printf("Actual\n");
 	print3DMatrix(random_points_x, tile_x, tile_y, points_per_tile);
