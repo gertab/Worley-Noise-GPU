@@ -7,14 +7,14 @@
 
 
 #include "jbutil.h"
-#include "WorleySerial.h"
-#include "Tests.h"
+#include "WorleyParallel.h"
+//#include "Tests.h"
 
 //#define RUNTESTS
 
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
-void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
 	assert(random_points_x != nullptr && random_points_y != nullptr);
 	assert(tile_x > 0 && tile_y > 0);
 	assert(tile_size > 0);
@@ -31,10 +31,18 @@ void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::r
 }
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
-// No shared memory used
-int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
-
+__global__ void normDistanceFromNearestPoint(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result) {
 	assert(tile_size > 0);
+
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x >= width || y >= height) {
+    	return;
+    }
+
+//    printf("%d %d\n", x, y);
+//
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
 
@@ -74,7 +82,8 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 		}
 	}
 
-	return shortest_norm_dist;
+	result[position3D(x, y, 0, width, height)] = shortest_norm_dist;
+//	return shortest_norm_dist;
 }
 
 // Creates Worley oise according to the options
@@ -88,7 +97,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	if(seed == 0)
 		seed = time(NULL); // Random seed
 
-	std::cout << "Creating Worley Noise with size: " << width << "x" << height << ", tile size: "
+	std::cout << "Creating Worley Noise using the GPU, with size: " << width << "x" << height << ", tile size: "
 			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
 			  << ", seed: " << seed << std::endl;
 
@@ -103,6 +112,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	jbutil::randgen rand(seed);
 
 	// Random points
+	size_t random_points_size = tile_x * tile_y * points_per_tile * sizeof(int);
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 	// Generate random points
@@ -110,15 +120,41 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
-   for(int x = 0; x < width; x++) {
-	   for(int y = 0; y < height; y++) {
-		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+	int *d_result, *d_random_points_x, *d_random_points_y;
 
-		   if(reverse) {
-			   // Revere image: white -> black, black -> white
-			   image_out(0, y, x) = 255 - image_out(0, y, x);
-		   }
-	   }
+	size_t res_size = width * height * sizeof(int);
+
+	// Allocating memory on device
+	gpuErrchk( cudaMalloc((void**) &d_result, res_size) );
+	gpuErrchk( cudaMalloc((void**) &d_random_points_x, random_points_size) );
+	gpuErrchk( cudaMalloc((void**) &d_random_points_y, random_points_size) );
+
+	// Copying data to device
+	gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
+	gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
+
+	dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
+	dim3 blocks(32, 32);
+
+    int sharedMemory = 9 * points_per_tile * sizeof(int);
+//    normDistanceFromNearestPointSharedMem<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+
+    // Copy result back to host from device
+	int *result = (int *) malloc(res_size);
+	gpuErrchk( cudaMemcpy(result, d_result, res_size, cudaMemcpyDeviceToHost) );
+
+
+	for(int x = 0; x < width; x++) {
+		for(int y = 0; y < height; y++) {
+//			image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+			image_out(0, y, x) = result[position3D(x, y, 0, width, height)]; // todo change to 2D
+
+			if(reverse) {
+				// Revere image: white -> black, black -> white
+				image_out(0, y, x) = 255 - image_out(0, y, x);
+			}
+		}
 	}
 
 	free(random_points_x);
@@ -134,59 +170,59 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 }
 
 
-// Performance checking for Worley Noise
-void PerformanceCheck(const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
-
-	assert(intensity >= 1);
-	assert(width > 0 && height > 0);
-	assert(tile_size > 0 && points_per_tile > 0);
-
-	if(seed == 0)
-		seed = time(NULL); // Random seed
-
-	std::cout << "Performance testing using the following configurations; size: " << width << "x" << height << ", tile size: "
-			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
-			  << ", seed: " << seed << std::endl;
-
-	// Split space int tiles of size 'tile_size'
-	int tile_x = DIV_CEIL(width, tile_size);
-	int tile_y = DIV_CEIL(height, tile_size);
-	assert(tile_x > 0 && tile_y > 0);
-
-	jbutil::randgen rand(seed);
-
-	// Random points
-	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	// Generate random points
-	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
-
-	// start timer w/o random point generation
-	double t = jbutil::gettime();
-
-	int count = 0;
-
-	// Loop for at least 60s
-	while((jbutil::gettime() - t) < 60) {
-		count++;
-
-		for(int x = 0; x < width; x++) {
-			for(int y = 0; y < height; y++) {
-				normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
-			}
-		}
-	}
-
-	free(random_points_x);
-	free(random_points_y);
-
-	// stop timer
-	t = jbutil::gettime() - t;
-	// show time taken
-	std::cout << "\n\n";
-	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << "s" << std::endl;
-}
+//// Performance checking for Worley Noise
+//void PerformanceCheck(const int width, const int height,
+//		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
+//
+//	assert(intensity >= 1);
+//	assert(width > 0 && height > 0);
+//	assert(tile_size > 0 && points_per_tile > 0);
+//
+//	if(seed == 0)
+//		seed = time(NULL); // Random seed
+//
+//	std::cout << "Performance testing using the following configurations; size: " << width << "x" << height << ", tile size: "
+//			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
+//			  << ", seed: " << seed << std::endl;
+//
+//	// Split space int tiles of size 'tile_size'
+//	int tile_x = DIV_CEIL(width, tile_size);
+//	int tile_y = DIV_CEIL(height, tile_size);
+//	assert(tile_x > 0 && tile_y > 0);
+//
+//	jbutil::randgen rand(seed);
+//
+//	// Random points
+//	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+//	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+//	// Generate random points
+//	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
+//
+//	// start timer w/o random point generation
+//	double t = jbutil::gettime();
+//
+//	int count = 0;
+//
+//	// Loop for at least 60s
+//	while((jbutil::gettime() - t) < 60) {
+//		count++;
+//
+//		for(int x = 0; x < width; x++) {
+//			for(int y = 0; y < height; y++) {
+//				normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+//			}
+//		}
+//	}
+//
+//	free(random_points_x);
+//	free(random_points_y);
+//
+//	// stop timer
+//	t = jbutil::gettime() - t;
+//	// show time taken
+//	std::cout << "\n\n";
+//	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << "s" << std::endl;
+//}
 
 void printHelp(char *input) {
 	std::cout << "Worley Noise\n"
@@ -341,7 +377,7 @@ int main (int argc, char **argv) {
 		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse);
 	} else {
 		// No outputs
-		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse);
+//		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse);
 	}
 #endif
 	return 0;

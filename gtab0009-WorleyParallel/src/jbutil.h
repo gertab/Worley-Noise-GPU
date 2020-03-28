@@ -44,7 +44,7 @@ const double pi = 3.14159265358979323846;
 
 // @}
 
-///*! \name Math functions */
+/*! \name Math functions */
 //
 //template <class real>
 //inline int round(real x)
@@ -402,7 +402,7 @@ public:
                int p;
                // Scale from [0,1] if we're using floating point
                if (typeid(T) == typeid(double) || typeid(T) == typeid(float))
-                  p = int(std::round(m_data(c)(i, j) * m_maxval));
+                  p = int(round(m_data(c)(i, j) * m_maxval));
                else
                   p = int(m_data(c)(i, j));
                assert(p >= 0 && p <= m_maxval);
