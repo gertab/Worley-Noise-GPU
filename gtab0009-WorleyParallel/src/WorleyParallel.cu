@@ -118,7 +118,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 	int *tiles_x = s;
 	int *tiles_y = (int*) &tiles_x[9 * points_per_tile];
 
-	// Each thread in a block has a different index;
+	// Each thread in one block is assigned different index;
 	int indexInBlock = threadIdx.x + blockDim.x * threadIdx.y;
 
 	assert(blockDim.x * blockDim.y >= 9 * points_per_tile);
@@ -225,6 +225,9 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	size_t res_size = width * height * sizeof(int);
 
+	gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+
 	// Allocating memory on device
 	gpuErrchk( cudaMalloc((void**) &d_result, res_size) );
 	gpuErrchk( cudaMalloc((void**) &d_random_points_x, random_points_size) );
@@ -237,9 +240,9 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
 	dim3 blocks(32, 32);
 
-//	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
-    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+//    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+//    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -336,7 +339,7 @@ void printHelp(char *input) {
 			  << " -w, --width         width of image\n"
 			  << " -b, --breath        breadth of image\n"
 			  << " -t, --tilesize      image split in square tiles of the chosen size\n"
-			  << " -p, --pptile        random pixels per tile\n"
+			  << " -p, --pptile        random pixels per tile. Nede to be between 1 and 113 (both inclusive)\n"
 			  << " -i, --intensity     intensity\n"
 			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
 			  << " -r, --reverse       the colours of the image will be inverted\n"
@@ -365,14 +368,15 @@ int main (int argc, char **argv) {
 //	int seed = 0;
 //	bool inverse = false;
 //	bool performance = false;
-	int width = 3500;
-	int height = 3500;
+	int width = 2000;
+	int height = 2000;
 	int tile_size = 512;
-	int points_per_tile = 128;
+	int points_per_tile = 114;
 	float intensity = 1.5;
 	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
+
 
 	int index;
 	int c;
@@ -398,7 +402,6 @@ int main (int argc, char **argv) {
 			{
 				printHelp(argv[0]);
 				return 0;
-				break;
 			}
 			case 'w':
 			{
@@ -437,10 +440,10 @@ int main (int argc, char **argv) {
 			{
 				int tmp = atoi(optarg);
 
-				if(tmp > 0) {
+				if(tmp > 0 && tmp <= 113) {
 					points_per_tile = tmp;
 				} else {
-					std::cout << "points per tile must be > 0\n";
+					std::cout << "points per tile must be between 1 and 113 (both inclusive)\n";
 				}
 				break;
 			}
