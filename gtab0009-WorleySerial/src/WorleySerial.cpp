@@ -216,13 +216,20 @@ int main (int argc, char **argv) {
 #else
 	// Default
 	char const *out = "out.pgm";
-	int width = 2000;
-	int height = 2500;
-	int tile_size = 512;
-	int points_per_tile = 5;
-	float intensity = 1;
+//	int width = 2000;
+//	int height = 2500;
+//	int tile_size = 512;
+//	int points_per_tile = 5;
+//	float intensity = 1;
 //	int seed = 0;
-	int seed = 23872374;
+//	bool inverse = false;
+//	bool performance = false;
+	int width = 1000;
+	int height = 2500;
+	int tile_size = 256;
+	int points_per_tile = 5;
+	float intensity = 1.5;
+	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
 

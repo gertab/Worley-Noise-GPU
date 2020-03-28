@@ -41,8 +41,6 @@ __global__ void normDistanceFromNearestPoint(int width, int height, int *random_
     	return;
     }
 
-//    printf("%d %d\n", x, y);
-//
 	int tile_x_pos = x / tile_size;
 	int tile_y_pos = y / tile_size;
 
@@ -83,10 +81,104 @@ __global__ void normDistanceFromNearestPoint(int width, int height, int *random_
 	}
 
 	result[position3D(x, y, 0, width, height)] = shortest_norm_dist;
-//	return shortest_norm_dist;
 }
 
-// Creates Worley oise according to the options
+// Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
+// Using shared memory
+__global__ void normDistanceFromNearestPointSharedMemory(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result) {
+	assert(tile_size > 0);
+
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	int tile_x_pos = x / tile_size;
+	int tile_y_pos = y / tile_size;
+
+	int tile_x = DIV_CEIL(width, tile_size);
+	int tile_y = DIV_CEIL(height, tile_size);
+	assert(tile_x > 0 && tile_y > 0);
+
+//	Load to shared memory
+	extern __shared__ int s[];
+	int *tiles_x = s;
+	int *tiles_y = (int*) &tiles_x[tile_x * tile_y * points_per_tile];
+
+	// Each thread in a block has a different index;
+	int indexInBlock = threadIdx.x + blockDim.x * threadIdx.y;
+	// todo: Needs to ensure that max(indexInBlock) == (9 * points_per_tile) - 1
+	// bocksize = 32 x 32 => 1024 threads / block. .:1024 / 9 = 113 points_per_tile max
+	//&& blockIdx.x == 7 && blockIdx.y ==
+	if(indexInBlock < (9 * points_per_tile)) {
+		int tileToGet = indexInBlock / points_per_tile;
+		int tileToGet_z = indexInBlock % points_per_tile;
+
+		// shared_memory_x can have value in range [0, 2]. Same for shared_memory_y
+		int shared_memory_x = tileToGet % 3;
+		int shared_memory_y = tileToGet / 3;
+
+		int shared_tile_x_pos = shared_memory_x + tile_x_pos - 1;
+		int shared_tile_y_pos = shared_memory_y + tile_y_pos - 1;
+
+		// Check if within range
+		if(shared_tile_x_pos >= 0 && shared_tile_x_pos < tile_x
+				&& shared_tile_y_pos >= 0 && shared_tile_y_pos < tile_y) {
+			printf("%d, tileToGet=%d x=%d, y=%d tile_x_pos=%d tile_y_pos=%d z=%d\n", indexInBlock, tileToGet, shared_tile_x_pos, shared_tile_y_pos, tile_x_pos, tile_y_pos, tileToGet_z);
+			tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = random_points_x[position3D(shared_tile_x_pos, shared_tile_y_pos, tileToGet_z, 3, 3)];
+//			tiles_y[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, tileToGet_z, 3, 3)];
+		} else {
+			// Set remaning to 0
+			tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
+//			tiles_y[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
+		}
+	}
+
+    if(x >= width || y >= height) {
+    	return;
+    }
+
+    __syncthreads();
+
+
+	// 0   = black
+	// 255 = white
+	int shortest_norm_dist = 255;
+
+	// Check only 3 by 3 tiles closest to current pixel
+	// This avoid having to brute force all points
+	for(int i = tile_x_pos - 1; i <= tile_x_pos + 1; i++) {
+		if(i >= 0 && tile_x_pos < tile_x) {
+
+			for(int j = tile_y_pos - 1; j <= tile_y_pos + 1; j++) {
+				if(j >= 0 && tile_y_pos < tile_y) {
+//	for(int i = 0; i < 3; i++) {
+//			for(int j = 0; j < 3; j++) {
+					for(int k = 0 ; k < points_per_tile ; k++){
+						// Checking all points in current tile
+
+						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y)];
+						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y)];
+//						float x_point = tiles_x[position3D(i, j, k, 3, 3)];
+//						int y_point = tiles_y[position3D(i, j, k, 3, 3)];
+						float x_dist = (x - x_point) / intensity;
+						float y_dist = (y - y_point) / intensity;
+
+						int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
+
+						if(distance < shortest_norm_dist) {
+							shortest_norm_dist = distance;
+						}
+					}
+				}
+
+			}
+		}
+	}
+
+
+	result[position3D(x, y, 0, width, height)] = shortest_norm_dist;
+}
+
+// Creates Worley Noise according to the options
 void WorleyNoise(const std::string outfile, const int width, const int height,
 		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
 
@@ -136,9 +228,12 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	dim3 grid((width + 32 - 1) / 32, (height + 32 - 1) / 32);
 	dim3 blocks(32, 32);
 
-    int sharedMemory = 9 * points_per_tile * sizeof(int);
-//    normDistanceFromNearestPointSharedMem<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, distance_order, d_result);
-	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+//	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
 
     // Copy result back to host from device
 	int *result = (int *) malloc(res_size);
@@ -147,7 +242,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	for(int x = 0; x < width; x++) {
 		for(int y = 0; y < height; y++) {
-//			image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 			image_out(0, y, x) = result[position3D(x, y, 0, width, height)]; // todo change to 2D
 
 			if(reverse) {
@@ -252,13 +346,20 @@ int main (int argc, char **argv) {
 #else
 	// Default
 	char const *out = "out.pgm";
-	int width = 2000;
-	int height = 2500;
-	int tile_size = 512;
-	int points_per_tile = 5;
-	float intensity = 1;
+//	int width = 2000;
+//	int height = 2500;
+//	int tile_size = 512;
+//	int points_per_tile = 5;
+//	float intensity = 1;
 //	int seed = 0;
-	int seed = 23872374;
+//	bool inverse = false;
+//	bool performance = false;
+	int width = 1000;
+	int height = 2500;
+	int tile_size = 256;
+	int points_per_tile = 5;
+	float intensity = 1.5;
+	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
 

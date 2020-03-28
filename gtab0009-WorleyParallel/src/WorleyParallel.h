@@ -30,3 +30,4 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 void printHelp(char *input);
 
 __global__ void normDistanceFromNearestPoint(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result);
+__global__ void normDistanceFromNearestPointSharedMemory(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result);
