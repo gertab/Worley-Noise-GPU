@@ -120,12 +120,12 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 
 	// Each thread in a block has a different index;
 	int indexInBlock = threadIdx.x + blockDim.x * threadIdx.y;
-	// todo: Needs to ensure that max(indexInBlock) >= (9 * points_per_tile)
-	// bocksize = 32 x 32 => 1024 threads / block. .:1024 / 9 = 113 points_per_tile max
-	//&& blockIdx.x == 7 && blockIdx.y ==
+
+	assert(blockDim.x * blockDim.y >= 9 * points_per_tile);
+
 	if(indexInBlock < (9 * points_per_tile)) {
 		int tileToGet = indexInBlock / points_per_tile;
-		int tileToGet_z = indexInBlock % points_per_tile;
+		int shared_memory_z = indexInBlock % points_per_tile;
 
 		// shared_memory_x can have value in range [0, 2]. Same for shared_memory_y
 		int shared_memory_x = tileToGet % 3;
@@ -134,29 +134,26 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 		int shared_tile_x_pos = shared_memory_x + tile_x_pos - 1;
 		int shared_tile_y_pos = shared_memory_y + tile_y_pos - 1;
 
-		// Check if within range
+		int position_shared_memory_1D = position3D(shared_memory_x, shared_memory_y, shared_memory_z, 3, 3);
 		if(shared_tile_x_pos >= 0 && shared_tile_x_pos < tile_x
 				&& shared_tile_y_pos >= 0 && shared_tile_y_pos < tile_y) {
-
-		    tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = random_points_x[position3D(shared_tile_x_pos, shared_tile_y_pos, tileToGet_z, tile_x, tile_y)];
-			tiles_y[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, tileToGet_z, tile_x, tile_y)];
-
-
+			// Tile is within range
+		    tiles_x[position_shared_memory_1D] = random_points_x[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y)];
+			tiles_y[position_shared_memory_1D] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y)];
 		} else {
-			// Set remaining to 0
-			tiles_x[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
-			tiles_y[position3D(shared_memory_x, shared_memory_y, tileToGet_z, 3, 3)] = 0;
+			// Tiles out of range are zeroed
+			tiles_x[position_shared_memory_1D] = 0;
+			tiles_y[position_shared_memory_1D] = 0;
 		}
 	}
 
-
-
     if(x >= width || y >= height) {
+    	// x and y  bigger than the limits are still used to load data in shared memory, since that if the tiles (in the right/bottom border)
+    	// are bigger than the block size, they would still be needed
     	return;
     }
 
     __syncthreads();
-
 
 	// 0   = black
 	// 255 = white
@@ -165,23 +162,23 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 	// Check only 3 by 3 tiles closest to current pixel
 	// This avoid having to brute force all points
 	for(int i = 0; i < 3; i++) {
-			for(int j = 0; j < 3; j++) {
-					for(int k = 0 ; k < points_per_tile; k++){
-						// Checking all points in current tile
+		for(int j = 0; j < 3; j++) {
+			for(int k = 0 ; k < points_per_tile; k++){
+				// Checking all points in current tile
 
-						float x_point = tiles_x[position3D(i, j, k, 3, 3)];
-						int y_point = tiles_y[position3D(i, j, k, 3, 3)];
+				float x_point = tiles_x[position3D(i, j, k, 3, 3)];
+				int y_point = tiles_y[position3D(i, j, k, 3, 3)];
 
-						if(!(x_point == 0 && y_point == 0)) {
-							float x_dist = (x - x_point) / intensity;
-							float y_dist = (y - y_point) / intensity;
+				if(!(x_point == 0 && y_point == 0)) {
+					float x_dist = (x - x_point) / intensity;
+					float y_dist = (y - y_point) / intensity;
 
-							int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
+					int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
 
-							if(distance < shortest_norm_dist) {
-								shortest_norm_dist = distance;
-							}
-						}
+					if(distance < shortest_norm_dist) {
+						shortest_norm_dist = distance;
+					}
+				}
 			}
 		}
 	}
@@ -222,11 +219,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	// Generate random points
 	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
-	printf("Actual\n");
-	print3DMatrix(random_points_x, tile_x, tile_y, points_per_tile);
-
-
-
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
 	int *d_result, *d_random_points_x, *d_random_points_y;
@@ -247,8 +239,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 //	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
     int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	printf("out#tile_x * tile_y * points_per_tile = %d\n", 2 * 9 * points_per_tile);
-
     normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 
     gpuErrchk( cudaPeekAtLastError() );
@@ -264,7 +254,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 			image_out(0, y, x) = result[position3D(x, y, 0, width, height)]; // todo change to 2D
 
 			if(reverse) {
-				// Revere image: white -> black, black -> white
+				// Reverse image: white -> black, black -> white
 				image_out(0, y, x) = 255 - image_out(0, y, x);
 			}
 		}
@@ -275,11 +265,12 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	// stop timer
 	t = jbutil::gettime() - t;
+
 	// save image
 	std::ofstream file_out(outfile.c_str());
 	image_out.save(file_out);
 	// show time taken
-	std::cerr << "Time taken: " << t << "s" << std::endl;
+	std::cerr << "Total time taken: " << t << "s" << std::endl;
 }
 
 
@@ -316,6 +307,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 //
 //	int count = 0;
 //
+//	// todo do warmup
 //	// Loop for at least 60s
 //	while((jbutil::gettime() - t) < 60) {
 //		count++;
@@ -373,10 +365,10 @@ int main (int argc, char **argv) {
 //	int seed = 0;
 //	bool inverse = false;
 //	bool performance = false;
-	int width = 1000;
-	int height = 2500;
-	int tile_size = 256;
-	int points_per_tile = 5;
+	int width = 3500;
+	int height = 3500;
+	int tile_size = 512;
+	int points_per_tile = 128;
 	float intensity = 1.5;
 	int seed = 782346;
 	bool inverse = false;

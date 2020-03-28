@@ -115,7 +115,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
 		   if(reverse) {
-			   // Revere image: white -> black, black -> white
+			   // Reverse image: white -> black, black -> white
 			   image_out(0, y, x) = 255 - image_out(0, y, x);
 		   }
 	   }
@@ -224,14 +224,15 @@ int main (int argc, char **argv) {
 //	int seed = 0;
 //	bool inverse = false;
 //	bool performance = false;
-	int width = 1000;
-	int height = 2500;
-	int tile_size = 256;
-	int points_per_tile = 5;
+	int width = 2000;
+	int height = 2000;
+	int tile_size = 512;
+	int points_per_tile = 128;
 	float intensity = 1.5;
 	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
+
 
 	int index;
 	int c;

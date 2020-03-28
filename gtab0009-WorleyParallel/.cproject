@@ -85,7 +85,7 @@
 								<option id="nvcc.compiler.option.level.1391358958" name="Generate host debug information (-g)" superClass="nvcc.compiler.option.level"/>
 								<option defaultValue="nvcc.compiler.optimization.level.most" id="nvcc.compiler.optimization.level.768033678" name="Optimization Level" superClass="nvcc.compiler.optimization.level" valueType="enumerated"/>
 								<option id="nvcc.compiler.pic.427467361" name="Position Independent Code (-fPIC)" superClass="nvcc.compiler.pic"/>
-								<option id="nvcc.compiler.def.symbols.1866104650" superClass="nvcc.compiler.def.symbols" valueType="definedSymbols">
+								<option id="nvcc.compiler.def.symbols.1866104650" name="Defined symbols (-D)" superClass="nvcc.compiler.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="NDEBUG"/>
 								</option>
 								<inputType id="nvcc.compiler.input.cu.973876506" superClass="nvcc.compiler.input.cu"/>
@@ -117,6 +117,7 @@
 					<ptx major="3" minor="5"/>
 					<ptx major="6" minor="1"/>
 				</executable>
+				<editor-arch major="3" minor="5"/>
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="com.nvidia.cuda.ide.on_path.configuration.debug.1901702524.297389581">
@@ -145,7 +146,7 @@
 								<option id="nvcc.compiler.option.level.1721881584" name="Generate host debug information (-g)" superClass="nvcc.compiler.option.level" value="true" valueType="boolean"/>
 								<option defaultValue="nvcc.compiler.optimization.level.none" id="nvcc.compiler.optimization.level.6729742" name="Optimization Level" superClass="nvcc.compiler.optimization.level" valueType="enumerated"/>
 								<option id="nvcc.compiler.pic.1859976147" name="Position Independent Code (-fPIC)" superClass="nvcc.compiler.pic"/>
-								<option id="nvcc.compiler.def.symbols.1567041848" superClass="nvcc.compiler.def.symbols" valueType="definedSymbols">
+								<option id="nvcc.compiler.def.symbols.1567041848" name="Defined symbols (-D)" superClass="nvcc.compiler.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="RUNTESTS"/>
 								</option>
 								<inputType id="nvcc.compiler.input.cu.661582403" superClass="nvcc.compiler.input.cu"/>
@@ -204,6 +205,7 @@
 		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/gtab0009-WorleyParallel"/>
 		</configuration>
+		<configuration configurationName="Tests"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
