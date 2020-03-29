@@ -31,7 +31,6 @@ void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::r
 }
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
-// No shared memory used
 int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
 
 	assert(tile_size > 0);
@@ -110,15 +109,15 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
-   for(int x = 0; x < width; x++) {
-	   for(int y = 0; y < height; y++) {
-		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+	for(int x = 0; x < width; x++) {
+		for(int y = 0; y < height; y++) {
+			image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
-		   if(reverse) {
-			   // Reverse image: white -> black, black -> white
-			   image_out(0, y, x) = 255 - image_out(0, y, x);
-		   }
-	   }
+			if(reverse) {
+				// Reverse image: white -> black, black -> white
+				image_out(0, y, x) = 255 - image_out(0, y, x);
+			}
+		}
 	}
 
 	free(random_points_x);

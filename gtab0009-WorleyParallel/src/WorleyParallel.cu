@@ -8,7 +8,7 @@
 
 #include "jbutil.h"
 #include "WorleyParallel.h"
-//#include "Tests.h"
+#include "Tests.h"
 
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
@@ -367,6 +367,7 @@ void printHelp(char *input) {
 int main (int argc, char **argv) {
 
 #ifdef RUNTESTS
+	std::cout << "Running tests\n";
 	// Run test cases in Debug mode
 	runTests();
 
@@ -384,7 +385,7 @@ int main (int argc, char **argv) {
 	int width = 2000;
 	int height = 2700;
 	int tile_size = 512;
-	int points_per_tile = 113;
+	int points_per_tile = 96;
 	float intensity = 1;
 	int seed = 782346;
 	bool inverse = false;
