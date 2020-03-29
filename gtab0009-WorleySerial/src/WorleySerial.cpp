@@ -10,26 +10,6 @@
 #include "WorleySerial.h"
 #include "Tests.h"
 
-//#define RUNTESTS
-
-// Fills random_points_x and random_points_y with random numbers
-// random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
-void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
-	assert(random_points_x != nullptr && random_points_y != nullptr);
-	assert(tile_x > 0 && tile_y > 0);
-	assert(tile_size > 0);
-	assert(points_per_tile > 0);
-
-	for(int x = 0; x < tile_x; x++) {
-		for(int y = 0; y < tile_y; y++) {
-			for(int z = 0; z < points_per_tile; z++) {
-				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
-			}
-		}
-	}
-}
-
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
 // No shared memory used
 int normDistanceFromNearestPoint(int x, int y, int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity) {
@@ -77,6 +57,24 @@ int normDistanceFromNearestPoint(int x, int y, int width, int height, int *rando
 	return shortest_norm_dist;
 }
 
+// Fills random_points_x and random_points_y with random numbers
+// random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
+void randomPointGeneration(int *random_points_x, int* random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+	assert(random_points_x != nullptr && random_points_y != nullptr);
+	assert(tile_x > 0 && tile_y > 0);
+	assert(tile_size > 0);
+	assert(points_per_tile > 0);
+
+	for(int x = 0; x < tile_x; x++) {
+		for(int y = 0; y < tile_y; y++) {
+			for(int z = 0; z < points_per_tile; z++) {
+				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+			}
+		}
+	}
+}
+
 // Creates Worley oise according to the options
 void WorleyNoise(const std::string outfile, const int width, const int height,
 		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
@@ -110,15 +108,15 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
-   for(int x = 0; x < width; x++) {
-	   for(int y = 0; y < height; y++) {
-		   image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
+	for(int x = 0; x < width; x++) {
+		for(int y = 0; y < height; y++) {
+			image_out(0, y, x) = normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
-		   if(reverse) {
-			   // Reverse image: white -> black, black -> white
-			   image_out(0, y, x) = 255 - image_out(0, y, x);
-		   }
-	   }
+			if(reverse) {
+				// Reverse image: white -> black, black -> white
+				image_out(0, y, x) = 255 - image_out(0, y, x);
+			}
+		}
 	}
 
 	free(random_points_x);
@@ -216,23 +214,14 @@ int main (int argc, char **argv) {
 #else
 	// Default
 	char const *out = "out.pgm";
-//	int width = 2000;
-//	int height = 2500;
-//	int tile_size = 512;
-//	int points_per_tile = 5;
-//	float intensity = 1;
-//	int seed = 0;
-//	bool inverse = false;
-//	bool performance = false;
 	int width = 2000;
-	int height = 2000;
+	int height = 2500;
 	int tile_size = 512;
-	int points_per_tile = 128;
-	float intensity = 1.5;
-	int seed = 782346;
+	int points_per_tile = 5;
+	float intensity = 1;
+	int seed = 0;
 	bool inverse = false;
 	bool performance = false;
-
 
 	int index;
 	int c;
