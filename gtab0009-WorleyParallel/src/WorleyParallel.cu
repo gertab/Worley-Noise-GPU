@@ -173,7 +173,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 
 // Creates Worley Noise according to the options
 void WorleyNoise(const std::string outfile, const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
+		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory) {
 
 	assert(intensity >= 1);
 	assert(width > 0 && height > 0);
@@ -218,9 +218,14 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
 
-//	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
-    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+	if(shared_memory) {
+		std::cout << "Using shared memory\n";
+	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+	} else  {
+		std::cout << "Without using shared memory\n";
+		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+	}
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -256,7 +261,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 // Performance checking for Worley Noise
 // Timings exclude memory transfer to/from device
 void PerformanceCheck(const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse) {
+		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory) {
 
 	assert(intensity >= 1);
 	assert(width > 0 && height > 0);
@@ -301,6 +306,12 @@ void PerformanceCheck(const int width, const int height,
 
 	int count = 0;
 
+	if(shared_memory) {
+		std::cout << "Using shared memory\n";
+	} else {
+		std::cout << "Without using shared memory\n";
+	}
+
 	// Warmup
 	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
 	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
@@ -311,11 +322,12 @@ void PerformanceCheck(const int width, const int height,
 	while((jbutil::gettime() - t) < 60) {
 		count++;
 
-//		// Naive approach
-//		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
-
-		// Using shared memory
-		normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+		if(shared_memory) {
+		    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+		    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+		} else  {
+			normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+		}
 
 		gpuErrchk( cudaDeviceSynchronize() );
 	}
@@ -343,10 +355,11 @@ void printHelp(char *input) {
 			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
 			  << " -r, --reverse       the colours of the image will be inverted\n"
 			  << "     --performance   used to time worley noise, without outputting anything\n"
+			  << "     --sharedmemory  use GPU version with shared memory\n"
 			  << " -h, --help          display options\n"
 			  << "\nExample commands:\n"
-			  << "./WorleySerial out.pgm --width 2500 --breadth 1500 --seed 34534 --pptile 5 --intensity 1.5\n"
-			  << "./WorleySerial out.pgm -w 500 -b 500 -p 5 -t 256\n"
+			  << "./WorleySerial out.pgm --width 2500 --breadth 1500 --seed 34534 --pptile 5 --intensity 1.5 --sharedmemory\n"
+			  << "./WorleySerial out.pgm -w 500 -b 500 -p 5 -t 256 --sharedmemory\n"
 			  << "./WorleySerial out.pgm -p 5 --reverse\n";
 }
 
@@ -369,13 +382,14 @@ int main (int argc, char **argv) {
 //	bool inverse = false;
 //	bool performance = false;
 	int width = 2000;
-	int height = 2000;
+	int height = 2700;
 	int tile_size = 512;
 	int points_per_tile = 113;
-	float intensity = 1.5;
+	float intensity = 1;
 	int seed = 782346;
 	bool inverse = false;
 	bool performance = false;
+	bool shared_memory = false;
 
 	int index;
 	int c;
@@ -390,11 +404,12 @@ int main (int argc, char **argv) {
         {"reverse",      no_argument, 		0,  'r' },
         {"help",         no_argument,       0,  'h' },
         {"performance",  no_argument,       0,  'k' },
+        {"sharedmemory",  no_argument,      0,  'z' },
         {0,           	 0,                 0,  0   }
     };
 
     int long_index =0;
-    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhk",
+    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhkz",
                    long_options, &long_index )) != -1) {
     	switch (c) {
 			case 'h':
@@ -466,6 +481,9 @@ int main (int argc, char **argv) {
 			case 'k':
 				performance = true;
 				break;
+			case 'z':
+				shared_memory = true;
+				break;
 			case '?':
 				if (optopt == 'w' || optopt == 'b' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -488,9 +506,9 @@ int main (int argc, char **argv) {
 
 	if(performance) {
 		// No outputs
-		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse);
+		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory);
 	} else {
-		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse);
+		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory);
 	}
 #endif
 	return 0;
