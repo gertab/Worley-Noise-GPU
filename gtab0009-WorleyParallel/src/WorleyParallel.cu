@@ -126,8 +126,8 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 			tiles_y[position_shared_memory_1D] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y)];
 		} else {
 			// Tiles out of range are zeroed
-			tiles_x[position_shared_memory_1D] = 0;
-			tiles_y[position_shared_memory_1D] = 0;
+			tiles_x[position_shared_memory_1D] = -1;
+			tiles_y[position_shared_memory_1D] = -1;
 		}
 	}
 
@@ -153,7 +153,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 				float x_point = tiles_x[position3D(i, j, k, 3, 3)];
 				int y_point = tiles_y[position3D(i, j, k, 3, 3)];
 
-				if(!(x_point == 0 && y_point == 0)) {
+				if(!(x_point == -1 && y_point == -1)) {
 					float x_dist = (x - x_point) / intensity;
 					float y_dist = (y - y_point) / intensity;
 
