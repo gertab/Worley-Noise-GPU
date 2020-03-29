@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CU_SRCS += \
+../src/Tests.cu \
 ../src/WorleyParallel.cu 
 
 OBJS += \
+./src/Tests.o \
 ./src/WorleyParallel.o 
 
 CU_DEPS += \
+./src/Tests.d \
 ./src/WorleyParallel.d 
 
 
