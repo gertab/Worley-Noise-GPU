@@ -8,7 +8,7 @@
 
 #include "jbutil.h"
 #include "WorleyParallel.h"
-//#include "Tests.h"
+#include "Tests.h"
 
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
@@ -368,7 +368,7 @@ int main (int argc, char **argv) {
 
 #ifdef RUNTESTS
 	// Run test cases in Debug mode
-//	runTests();
+	runTests();
 
 #else
 	// Default
