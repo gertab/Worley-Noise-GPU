@@ -78,7 +78,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 	int tile_y = DIV_CEIL(height, tile_size);
 	assert(tile_x > 0 && tile_y > 0);
 
-//	Load to shared memory
+	// Load to shared memory
 	extern __shared__ int s[];
 	int *tiles_x = s;
 	int *tiles_y = (int*) &tiles_x[9 * points_per_tile];
@@ -119,6 +119,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
     	return;
     }
 
+    // Ensure shared memory is filled
     __syncthreads();
 
 	// 0   = black
@@ -133,7 +134,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 				// Checking all points in current tile
 
 				float x_point = tiles_x[position3D(i, j, k, 3, 3)];
-				int y_point = tiles_y[position3D(i, j, k, 3, 3)];
+				float y_point = tiles_y[position3D(i, j, k, 3, 3)];
 
 				if(!(x_point == -1 && y_point == -1)) {
 					float x_dist = (x - x_point) / intensity;
