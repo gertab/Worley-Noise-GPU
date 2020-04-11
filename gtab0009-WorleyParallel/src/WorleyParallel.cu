@@ -65,7 +65,7 @@ __global__ void normDistanceFromNearestPoint(int width, int height, int *random_
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
 // Using shared memory
-__global__ void normDistanceFromNearestPointSharedMemory(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result) {
+__global__ void normDistanceFromNearestPointSharedMemory(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result, bool fast_math) {
 	assert(tile_size > 0);
 
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -137,13 +137,25 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 				float y_point = tiles_y[position3D(i, j, k, 3, 3)];
 
 				if(!(x_point == -1 && y_point == -1)) {
-					float x_dist = (x - x_point) / intensity;
-					float y_dist = (y - y_point) / intensity;
+					float x_dist, y_dist, distance;
 
-					int distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
+					if(fast_math) {
+						// Use faster but less accurate math functions
+						x_dist = __fdividef(__fsub_rd(x, x_point), intensity);
+						y_dist = __fdividef(__fsub_rd(y, y_point), intensity);
+
+						distance = __fsqrt_rd(__fadd_rd(__fmul_ru(x_dist, x_dist), __fmul_ru(y_dist, y_dist))); // Euclidean distance
+					} else {
+						// Use accurate math functions
+
+						x_dist = (x - x_point) / intensity;
+						y_dist = (y - y_point) / intensity;
+
+						distance = sqrt(x_dist * x_dist + y_dist * y_dist); // Euclidean distance
+					}
 
 					if(distance < shortest_norm_dist) {
-						shortest_norm_dist = distance;
+						shortest_norm_dist = (int) distance;
 					}
 				}
 			}
@@ -172,8 +184,8 @@ void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::r
 }
 
 // Creates Worley Noise according to the options
-void WorleyNoise(const std::string outfile, const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory) {
+void WorleyNoise(const std::string outfile, const int width, const int height, const int tile_size,
+		const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, const bool fast_math) {
 
 	assert(intensity >= 1);
 	assert(width > 0 && height > 0);
@@ -184,7 +196,7 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 	std::cout << "Creating Worley Noise using the GPU, with size: " << width << "x" << height << ", tile size: "
 			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
-			  << ", seed: " << seed << std::endl;
+			  << ", seed: " << seed << ", fast math: " << (fast_math ? "yes" : "no") << "\n";
 
 	// start timer
 	double t = jbutil::gettime();
@@ -219,9 +231,14 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 	dim3 blocks(32, 32);
 
 	if(shared_memory) {
-		std::cout << "Using shared memory\n";
+		std::cout << "Using shared memory";
+		if(fast_math) {
+			std::cout << " and fast math";
+		}
+		std::cout << "\n";
+
 	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
+    	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result, fast_math);
 	} else  {
 		std::cout << "Without using shared memory\n";
 		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
@@ -260,8 +277,8 @@ void WorleyNoise(const std::string outfile, const int width, const int height,
 
 // Performance checking for Worley Noise
 // Timings exclude memory transfer to/from device
-void PerformanceCheck(const int width, const int height,
-		         const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory) {
+void PerformanceCheck(const int width, const int height, const int tile_size, const int points_per_tile, const float intensity,
+		int seed, const bool reverse, const bool shared_memory, const bool fast_math) {
 
 	assert(intensity >= 1);
 	assert(width > 0 && height > 0);
@@ -272,7 +289,7 @@ void PerformanceCheck(const int width, const int height,
 
 	std::cout << "Performance testing Worley Noise using the GPU, with size: " << width << "x" << height << ", tile size: "
 			  << tile_size << "x" << tile_size << ", points per tile: " << points_per_tile << ", intensity: " << intensity
-			  << ", seed: " << seed << std::endl;
+			  << ", seed: " << seed << ", fast math: " << (fast_math ? "yes" : "no") << "\n";
 
 	// Split space int tiles of size 'tile_size'
 	int tile_x = DIV_CEIL(width, tile_size);
@@ -355,6 +372,7 @@ void printHelp(char *input) {
 			  << " -i, --intensity     intensity\n"
 			  << " -s, --seed          preconfigure seed. If not configures, a random seed is chosen\n"
 			  << " -r, --reverse       the colours of the image will be inverted\n"
+			  << " -f, --fastmath      uses faster but less accurate math operations\n"
 			  << "     --performance   used to time worley noise, without outputting anything\n"
 			  << "     --sharedmemory  use GPU version with shared memory\n"
 			  << " -h, --help          display options\n"
@@ -383,6 +401,19 @@ int main (int argc, char **argv) {
 	bool inverse = false;
 	bool performance = false;
 	bool shared_memory = false;
+	bool fast_math = false;
+
+//	char const *out = "out2.pgm";
+//	int width = 8000;
+//	int height = 8000;
+//	int tile_size = 512;
+//	int points_per_tile = 64;
+//	float intensity = 1;
+//	int seed = 234723;
+//	bool inverse = false;
+//	bool performance = false;
+//	bool shared_memory = true;
+//	bool fast_math = true;
 
 	int index;
 	int c;
@@ -398,11 +429,12 @@ int main (int argc, char **argv) {
         {"help",         no_argument,       0,  'h' },
         {"performance",  no_argument,       0,  'k' },
         {"sharedmemory",  no_argument,      0,  'z' },
+        {"fastmath",  	no_argument,      0,  'f' },
         {0,           	 0,                 0,  0   }
     };
 
     int long_index =0;
-    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhkz",
+    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhkzf",
                    long_options, &long_index )) != -1) {
     	switch (c) {
 			case 'h':
@@ -474,6 +506,9 @@ int main (int argc, char **argv) {
 			case 'k':
 				performance = true;
 				break;
+			case 'f':
+				fast_math = true;
+				break;
 			case 'z':
 				shared_memory = true;
 				break;
@@ -499,9 +534,9 @@ int main (int argc, char **argv) {
 
 	if(performance) {
 		// No outputs
-		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory);
+		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
 	} else {
-		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory);
+		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
 	}
 #endif
 	return 0;
