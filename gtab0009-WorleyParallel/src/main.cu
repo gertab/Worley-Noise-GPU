@@ -23,29 +23,29 @@ int main (int argc, char **argv) {
 
 #else
 	// Default
-	char const *out = "out.pgm";
-	int width = 2000;
-	int height = 2500;
-	int tile_size = 512;
-	int points_per_tile = 5;
-	float intensity = 1;
-	int seed = 0;
-	bool inverse = false;
-	bool performance = false;
-	bool shared_memory = false;
-	bool fast_math = false;
-
-//	char const *out = "out2.pgm";
-//	int width = 8000;
-//	int height = 8000;
+//	char const *out = "out.pgm";
+//	int width = 2000;
+//	int height = 2500;
 //	int tile_size = 512;
-//	int points_per_tile = 64;
+//	int points_per_tile = 5;
 //	float intensity = 1;
-//	int seed = 234723;
+//	int seed = 0;
 //	bool inverse = false;
 //	bool performance = false;
-//	bool shared_memory = true;
-//	bool fast_math = true;
+//	bool shared_memory = false;
+//	bool fast_math = false;
+
+	char const *out = "out.pgm";
+	int width = 8000;
+	int height = 8000;
+	int tile_size = 512;
+	int points_per_tile = 16;
+	float intensity = 1;
+	int seed = 234723;
+	bool inverse = false;
+	bool performance = false;
+	bool shared_memory = true;
+	bool fast_math = true;
 
 	int index;
 	int c;
@@ -175,61 +175,54 @@ int main (int argc, char **argv) {
 	return 0;
 }
 
-__global__ void setup_kernel(curandState *state, int seed, int n) {
+__global__ void generate_uniform_kernel(int *d_random_points_x, int *d_random_points_y, int seed, int tile_size, int tile_x, int tile_y, int points_per_tile){
+	assert(d_random_points_x != nullptr && d_random_points_y != nullptr);
+	assert(tile_x > 0 && tile_y > 0);
+	assert(tile_size > 0);
+	assert(points_per_tile > 0);
 
-    int id = threadIdx.x + blockIdx.x*blockDim.x;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if(id < n){
-        curand_init(seed, id, 0, &state[id]);
+    if(x >= tile_x || y >= tile_y) {
+    	// Out of bounds
+    	return;
     }
-}
 
-__global__ void generate_uniform_kernel(curandState *state, float *result, int n){
+    int id = position3D(x, y, 0, tile_x, tile_y);
 
-    int id = threadIdx.x + blockIdx.x*blockDim.x;
-    float x;
+    float r;
+    curandState state;
 
-    if(id < n){
-        curandState localState = state[id];
-        x = curand_uniform(&localState);
-        state[id] = localState;
-        result[id] = x;
-    }
+	curand_init(seed, id, 0, &state);
+
+//	int x_res[points_per_tile];
+
+	for(int z = 0; z < points_per_tile; z++) {
+
+		r = curand_uniform(&state); // Random number from uniform distribution
+
+		int a = x * tile_size, b = (x + 1) * tile_size;
+		int x_res = r * (b - a) + a;
+
+		r = curand_uniform(&state);
+
+		a = y * tile_size;
+		b = (y + 1) * tile_size;
+		int y_res = r * (b - a) + a;
+
+		d_random_points_x[position3D(x, y, z, tile_x, tile_y)] = x_res;
+		d_random_points_y[position3D(x, y, z, tile_x, tile_y)] = y_res;
+	}
 }
 
 void pointGeneration(int *d_random_points_x, int *d_random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
-    curandState *devStates;
-    float *devResults, *hostResults;
+	dim3 grid(DIV_CEIL(tile_x, 16), DIV_CEIL(tile_y, 16));
+	dim3 blocks(16, 16);
 
-    int n = tile_x * tile_y;
-    int blockSize = 256;
-
-    int nBlocks = DIV_CEIL(n, blockSize);//n/blockSize + (n%blockSize == 0?0:1);
-
-    printf("\nn: %d, blockSize: %d, nBlocks: %d, seed: %d\n", n, blockSize, nBlocks, seed);
-
-    hostResults = (float *)calloc(n, sizeof(float));
-    cudaMalloc((void **)&devResults, n*sizeof(float));
-
-    cudaMalloc((void **)&devStates, n*sizeof(curandState));
-    setup_kernel<<<nBlocks, blockSize>>>(devStates, seed, n);
+    generate_uniform_kernel<<<grid, blocks>>>(d_random_points_x, d_random_points_y, seed, tile_size, tile_x, tile_y, points_per_tile);
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
-
-    generate_uniform_kernel<<<nBlocks, blockSize>>>(devStates, devResults, n);
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
-
-    cudaMemcpy(hostResults, devResults, n*sizeof(float), cudaMemcpyDeviceToHost);
-
-    for(int i=0; i<n; i++) {
-        printf("\n%10.13f", hostResults[i]);
-    }
-
-    cudaFree(devStates);
-    cudaFree(devResults);
-    free(hostResults);
-
 }
 
 
@@ -269,15 +262,21 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 	gpuErrchk( cudaMalloc((void**) &d_random_points_x, random_points_size) );
 	gpuErrchk( cudaMalloc((void**) &d_random_points_y, random_points_size) );
 
-//	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-//	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-//	// Generate random points
-//	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
+	if(false) {
+		int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+		int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+		// Generate random points
+		randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
-//	 Copying data to device
-//	gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
-//	gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
-	pointGeneration(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
+		// Copying data to device
+		gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
+		gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
+
+		free(random_points_x);
+		free(random_points_y);
+	} else {
+		pointGeneration(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
+	}
 
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
