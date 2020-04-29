@@ -25,8 +25,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 
 // Convert 3D position to the corresponding flattened 1D array position
-#define position3D(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
-//#define position2D(x, y, WIDTH) (WIDTH*y + x)
+#define position3D(x, y, z, WIDTH, HEIGHT, DEPTH) (DEPTH * WIDTH * y + DEPTH * x + z)
+#define position2D(x, y, WIDTH, HEIGHT) (WIDTH * y + x)
 
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)

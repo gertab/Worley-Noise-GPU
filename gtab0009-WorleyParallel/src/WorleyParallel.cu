@@ -47,8 +47,8 @@ __global__ void normDistanceFromNearestPoint(int width, int height, int *random_
 					for(int k = 0 ; k < points_per_tile ; k++){
 						// Checking all points in current tile
 
-						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y)];
-						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y)];
+						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y, points_per_tile)];
+						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y, points_per_tile)];
 						float x_dist = (x - x_point) / intensity;
 						float y_dist = (y - y_point) / intensity;
 
@@ -63,7 +63,7 @@ __global__ void normDistanceFromNearestPoint(int width, int height, int *random_
 		}
 	}
 
-	result[position3D(x, y, 0, width, height)] = shortest_norm_dist;
+	result[position2D(x, y, width, height)] = shortest_norm_dist;
 }
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
@@ -103,12 +103,12 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 		int shared_tile_x_pos = shared_memory_x + tile_x_pos - 1;
 		int shared_tile_y_pos = shared_memory_y + tile_y_pos - 1;
 
-		int position_shared_memory_1D = position3D(shared_memory_x, shared_memory_y, shared_memory_z, 3, 3);
+		int position_shared_memory_1D = position3D(shared_memory_x, shared_memory_y, shared_memory_z, 3, 3, points_per_tile);
 		if(shared_tile_x_pos >= 0 && shared_tile_x_pos < tile_x
 				&& shared_tile_y_pos >= 0 && shared_tile_y_pos < tile_y) {
 			// Tile is within range
-		    tiles_x[position_shared_memory_1D] = random_points_x[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y)];
-			tiles_y[position_shared_memory_1D] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y)];
+		    tiles_x[position_shared_memory_1D] = random_points_x[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y, points_per_tile)];
+			tiles_y[position_shared_memory_1D] = random_points_y[position3D(shared_tile_x_pos, shared_tile_y_pos, shared_memory_z, tile_x, tile_y, points_per_tile)];
 		} else {
 			// Tiles out of range are zeroed
 			tiles_x[position_shared_memory_1D] = -1;
@@ -136,8 +136,8 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 			for(int k = 0 ; k < points_per_tile; k++){
 				// Checking all points in current tile
 
-				float x_point = tiles_x[position3D(i, j, k, 3, 3)];
-				float y_point = tiles_y[position3D(i, j, k, 3, 3)];
+				float x_point = tiles_x[position3D(i, j, k, 3, 3, points_per_tile)];
+				float y_point = tiles_y[position3D(i, j, k, 3, 3, points_per_tile)];
 
 				if(!(x_point == -1 && y_point == -1)) {
 					float x_dist, y_dist, distance;
@@ -165,7 +165,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 		}
 	}
 
-	result[position3D(x, y, 0, width, height)] = shortest_norm_dist;
+	result[position2D(x, y, width, height)] = shortest_norm_dist;
 }
 
 
@@ -180,8 +180,8 @@ void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::r
 	for(int x = 0; x < tile_x; x++) {
 		for(int y = 0; y < tile_y; y++) {
 			for(int z = 0; z < points_per_tile; z++) {
-				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+				random_points_x[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+				random_points_y[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
 			}
 		}
 	}

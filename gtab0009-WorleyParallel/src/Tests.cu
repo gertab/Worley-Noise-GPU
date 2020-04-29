@@ -89,8 +89,8 @@ void test1() {
 
 	for(int y = 0; y < height; y++) {
 		for(int x = 0; x < width; x++) {
-			int point_no_shared = result_no_shared_mem[position3D(x, y, 0, width, height)];
-			int point_shared = result_shared_mem[position3D(x, y, 0, width, height)];
+			int point_no_shared = result_no_shared_mem[position3D(x, y, 0, width, height, points_per_tile)];
+			int point_shared = result_shared_mem[position3D(x, y, 0, width, height, points_per_tile)];
 
 			assert(correct_result[y][x] == point_no_shared);
 			assert(correct_result[y][x] == point_shared);
@@ -177,8 +177,8 @@ void test2() {
 
 	for(int y = 0; y < height; y++) {
 		for(int x = 0; x < width; x++) {
-			int point_no_shared = result_no_shared_mem[position3D(x, y, 0, width, height)];
-			int point_shared = result_shared_mem[position3D(x, y, 0, width, height)];
+			int point_no_shared = result_no_shared_mem[position2D(x, y, width, height)];
+			int point_shared = result_shared_mem[position2D(x, y, width, height)];
 
 			assert(correct_result[y][x] == point_no_shared);
 			assert(correct_result[y][x] == point_shared);
@@ -254,8 +254,8 @@ void test3() {
 	//	int i = 0;
 	for(int x = 0; x < width; x++) {
 		for(int y = 0; y < height; y++) {
-			int point_no_shared = result_no_shared_mem[position3D(x, y, 0, width, height)];
-			int point_shared = result_shared_mem[position3D(x, y, 0, width, height)];
+			int point_no_shared = result_no_shared_mem[position2D(x, y, width, height)];
+			int point_shared = result_shared_mem[position2D(x, y, width, height)];
 
 			int p = normDistanceFromNearestPointSerialImplementation(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
@@ -333,8 +333,8 @@ void test4() {
 	//	int i = 0;
 	for(int x = 0; x < width; x++) {
 		for(int y = 0; y < height; y++) {
-			int point_no_shared = result_no_shared_mem[position3D(x, y, 0, width, height)];
-			int point_shared = result_shared_mem[position3D(x, y, 0, width, height)];
+			int point_no_shared = result_no_shared_mem[position2D(x, y, width, height)];
+			int point_shared = result_shared_mem[position2D(x, y, width, height)];
 
 			int p = normDistanceFromNearestPointSerialImplementation(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
@@ -368,16 +368,16 @@ void testDIVCEIL() {
 }
 
 void testPosition3D() {
-	int width = 2, height = 2;
+	int width = 2, height = 2, depth = 2;
 
-	assert(position3D(0, 0, 0, width, height) == 0);
-	assert(position3D(1, 0, 0, width, height) == 1);
-	assert(position3D(0, 1, 0, width, height) == 2);
-	assert(position3D(1, 1, 0, width, height) == 3);
-	assert(position3D(0, 0, 1, width, height) == 4);
-	assert(position3D(1, 0, 1, width, height) == 5);
-	assert(position3D(0, 1, 1, width, height) == 6);
-	assert(position3D(1, 1, 1, width, height) == 7);
+	assert(position3D(0, 0, 0, width, height, depth) == 0);
+	assert(position3D(1, 0, 0, width, height, depth) == 2);
+	assert(position3D(0, 1, 0, width, height, depth) == 4);
+	assert(position3D(1, 1, 0, width, height, depth) == 6);
+	assert(position3D(0, 0, 1, width, height, depth) == 1);
+	assert(position3D(1, 0, 1, width, height, depth) == 3);
+	assert(position3D(0, 1, 1, width, height, depth) == 5);
+	assert(position3D(1, 1, 1, width, height, depth) == 7);
 }
 
 
@@ -409,8 +409,8 @@ int normDistanceFromNearestPointSerialImplementation(int x, int y, int width, in
 					for(int k = 0 ; k < points_per_tile ; k++){
 						// Checking all points in current tile
 
-						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y)];
-						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y)];
+						float x_point = random_points_x[position3D(i, j, k, tile_x, tile_y, points_per_tile)];
+						float y_point = random_points_y[position3D(i, j, k, tile_x, tile_y, points_per_tile)];
 						float x_dist = (x - x_point) / intensity;
 						float y_dist = (y - y_point) / intensity;
 

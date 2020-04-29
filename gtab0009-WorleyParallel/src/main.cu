@@ -44,7 +44,7 @@ int main (int argc, char **argv) {
 	int seed = 234723;
 	bool inverse = false;
 	bool performance = false;
-	bool shared_memory = true;
+	bool shared_memory = false;
 	bool fast_math = true;
 
 	int index;
@@ -189,7 +189,7 @@ __global__ void generate_uniform_kernel(int *d_random_points_x, int *d_random_po
     	return;
     }
 
-    int id = position3D(x, y, 0, tile_x, tile_y);
+    int id = position3D(x, y, 0, tile_x, tile_y, points_per_tile);
 
     float r;
     curandState state;
@@ -211,8 +211,8 @@ __global__ void generate_uniform_kernel(int *d_random_points_x, int *d_random_po
 		b = (y + 1) * tile_size;
 		int y_res = r * (b - a) + a;
 
-		d_random_points_x[position3D(x, y, z, tile_x, tile_y)] = x_res;
-		d_random_points_y[position3D(x, y, z, tile_x, tile_y)] = y_res;
+		d_random_points_x[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = x_res;
+		d_random_points_y[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = y_res;
 	}
 }
 
@@ -304,17 +304,13 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 
 	for(int x = 0; x < width; x++) {
 		for(int y = 0; y < height; y++) {
-			image_out(0, y, x) = result[position3D(x, y, 0, width, height)]; // todo change to 2D
-
+			image_out(0, y, x) = result[position2D(x, y, width, height)];
 			if(reverse) {
 				// Reverse image: white -> black, black -> white
 				image_out(0, y, x) = 255 - image_out(0, y, x);
 			}
 		}
 	}
-
-//	free(random_points_x);
-//	free(random_points_y);
 
 	// stop timer
 	t = jbutil::gettime() - t;
