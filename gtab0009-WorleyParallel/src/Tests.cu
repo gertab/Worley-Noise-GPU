@@ -7,6 +7,7 @@
 
 #include "Tests.h"
 #include "WorleyParallel.h"
+#include "main.h"
 
 void runTests() {
 	std::cout << "Running test cases\n";
