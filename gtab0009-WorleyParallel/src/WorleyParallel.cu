@@ -168,7 +168,7 @@ __global__ void normDistanceFromNearestPointSharedMemory(int width, int height, 
 	result[position2D(x, y, width, height)] = shortest_norm_dist;
 }
 
-
+// Generates random points on the host
 // Fills random_points_x and random_points_y with random numbers
 // random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
 void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::randgen rand, int tile_x, int tile_y, int tile_size, int points_per_tile) {
@@ -187,23 +187,93 @@ void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::r
 	}
 }
 
+// Generates random points on the deivice
+void generateRandomPointOnDevice(int *d_random_points_x, int *d_random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+	dim3 grid(DIV_CEIL(tile_x, 16), DIV_CEIL(tile_y, 16));
+	dim3 blocks(16, 16);
 
+	generateRandomPointsKernel<<<grid, blocks>>>(d_random_points_x, d_random_points_y, seed, tile_size, tile_x, tile_y, points_per_tile);
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+}
 
-// Fills random_points_x and random_points_y with random numbers
-// random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
-__global__ void randomPointGenerationKernel(int *random_points_x, int *random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
-	assert(random_points_x != nullptr && random_points_y != nullptr);
+__global__ void generateRandomPointsKernel2(int *d_random_points_x, int *d_random_points_y, int seed, int tile_size, int tile_x, int tile_y, int points_per_tile){
+	assert(d_random_points_x != nullptr && d_random_points_y != nullptr);
 	assert(tile_x > 0 && tile_y > 0);
 	assert(tile_size > 0);
 	assert(points_per_tile > 0);
 
-	for(int x = 0; x < tile_x; x++) {
-		for(int y = 0; y < tile_y; y++) {
-			for(int z = 0; z < points_per_tile; z++) {
-//				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
-//				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
-			}
-		}
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x >= tile_x || y >= tile_y) {
+    	// Out of bounds
+    	return;
+    }
+
+    int id = position3D(x, y, 0, tile_x, tile_y, points_per_tile);
+
+    float r;
+    curandState state;
+
+	curand_init(seed, id, 0, &state);
+
+	for(int z = 0; z < points_per_tile; z++) {
+
+		r = curand_uniform(&state); // Random number from uniform distribution
+
+		int a = x * tile_size, b = (x + 1) * tile_size;
+		int x_res = r * (b - a) + a;
+
+		r = curand_uniform(&state);
+
+		a = y * tile_size;
+		b = (y + 1) * tile_size;
+		int y_res = r * (b - a) + a;
+
+		d_random_points_x[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = x_res;
+		d_random_points_y[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = y_res;
 	}
 }
 
+
+__global__ void generateRandomPointsKernel(int *d_random_points_x, int *d_random_points_y, int seed, int tile_size, int tile_x, int tile_y, int points_per_tile){
+	assert(d_random_points_x != nullptr && d_random_points_y != nullptr);
+	assert(tile_x > 0 && tile_y > 0);
+	assert(tile_size > 0);
+	assert(points_per_tile > 0);
+
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x >= tile_x || y >= tile_y) {
+    	// Out of bounds
+    	return;
+    }
+
+    int id = position3D(x, y, 0, tile_x, tile_y, points_per_tile);
+
+    float r;
+    curandState state;
+
+	curand_init(seed, id, 0, &state);
+
+//	int x_res[points_per_tile];
+
+	for(int z = 0; z < points_per_tile; z++) {
+
+		r = curand_uniform(&state); // Random number from uniform distribution
+
+		int a = x * tile_size, b = (x + 1) * tile_size;
+		int x_res = r * (b - a) + a;
+
+		r = curand_uniform(&state);
+
+		a = y * tile_size;
+		b = (y + 1) * tile_size;
+		int y_res = r * (b - a) + a;
+
+		d_random_points_x[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = x_res;
+		d_random_points_y[position3D(x, y, z, tile_x, tile_y, points_per_tile)] = y_res;
+	}
+}
