@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include "jbutil.h"
 
+// Macros
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -18,6 +19,11 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+#define gpuErrchkRand(x) do { if((x)!=CURAND_STATUS_SUCCESS) { \
+    printf("Error at %s:%d\n",__FILE__,__LINE__);\
+    return EXIT_FAILURE;}} while(0)
+
+
 // Convert 3D position to the corresponding flattened 1D array position
 #define position3D(x, y, z, WIDTH, HEIGHT) (HEIGHT*WIDTH*z + WIDTH*y + x)
 //#define position2D(x, y, WIDTH) (WIDTH*y + x)
@@ -25,6 +31,12 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
 
+enum MEMORY {
+	shared,
+	constant,
+	naive
+};
 void printHelp(char *input);
 void WorleyNoise(const std::string outfile, const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, bool fast_math = false);
 void PerformanceCheck(const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, const bool fast_math);
+

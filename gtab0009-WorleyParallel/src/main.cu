@@ -10,6 +10,227 @@
 #include "WorleyParallel.h"
 #include "Tests.h"
 #include "main.h"
+#include <curand.h>
+#include <curand_kernel.h>
+
+
+// Main program entry point
+int main (int argc, char **argv) {
+
+#ifdef RUNTESTS
+	// Run test cases in Debug mode
+	runTests();
+
+#else
+	// Default
+	char const *out = "out.pgm";
+	int width = 2000;
+	int height = 2500;
+	int tile_size = 512;
+	int points_per_tile = 5;
+	float intensity = 1;
+	int seed = 0;
+	bool inverse = false;
+	bool performance = false;
+	bool shared_memory = false;
+	bool fast_math = false;
+
+//	char const *out = "out2.pgm";
+//	int width = 8000;
+//	int height = 8000;
+//	int tile_size = 512;
+//	int points_per_tile = 64;
+//	float intensity = 1;
+//	int seed = 234723;
+//	bool inverse = false;
+//	bool performance = false;
+//	bool shared_memory = true;
+//	bool fast_math = true;
+
+	int index;
+	int c;
+
+    static struct option long_options[] = {
+        {"width",        required_argument, 0,  'w' },
+        {"breadth",      required_argument, 0,  'b' },
+        {"tilesize",     required_argument, 0,  't' },
+        {"pptile",       required_argument, 0,  'p' },
+        {"intensity",    required_argument, 0,  'i' },
+        {"seed",         required_argument, 0,  's' },
+        {"reverse",      no_argument, 		0,  'r' },
+        {"help",         no_argument,       0,  'h' },
+        {"performance",  no_argument,       0,  'k' },
+        {"sharedmemory", no_argument,       0,  'z' },
+//        {"constantmemory",no_argument,      0,  'c' },
+        {"fastmath",  	 no_argument,       0,  'f' },
+        {0,           	 0,                 0,  0   }
+    };
+
+    int long_index =0;
+    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhkzf",
+                   long_options, &long_index )) != -1) {
+    	switch (c) {
+			case 'h':
+			{
+				printHelp(argv[0]);
+				return 0;
+			}
+			case 'w':
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					width = tmp;
+				} else {
+					std::cout << "Width must be > 0\n";
+				}
+				break;
+			}
+			case 'b':
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					height = tmp;
+				} else {
+					std::cout << "height must be > 0\n";
+				}
+				break;
+			}
+			case 't':
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0) {
+					tile_size = tmp;
+				} else {
+					std::cout << "tile size must be > 0\n";
+				}
+				break;
+			}
+			case 'p':
+			{
+				int tmp = atoi(optarg);
+
+				if(tmp > 0 && tmp <= 113) {
+					points_per_tile = tmp;
+				} else {
+					std::cout << "points per tile must be between 1 and 113 (both inclusive)\n";
+				}
+				break;
+			}
+			case 'i':
+			{
+				float tmp = atof(optarg);
+
+				if(tmp >= 1) {
+					intensity = tmp;
+				} else {
+					std::cout << "intensity must be >= 1\n";
+				}
+				break;
+			}
+			case 's':
+				seed = atoi(optarg);
+				break;
+			case 'r':
+				inverse = true;
+				break;
+			case 'k':
+				performance = true;
+				break;
+			case 'f':
+				fast_math = true;
+				break;
+			case 'z':
+				shared_memory = true;
+				break;
+			case '?':
+				if (optopt == 'w' || optopt == 'b' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
+					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+				else
+				if (isprint (optopt))
+					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+				else
+					fprintf (stderr,
+							"Unknown option character `\\x%x'.\n",
+							optopt);
+				return 1;
+			default:
+				abort ();
+		}
+	}
+
+	for (index = optind; index < argc; index++) {
+		out = argv[index];
+	}
+
+	if(performance) {
+		// No outputs
+		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
+	} else {
+		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
+	}
+#endif
+	return 0;
+}
+
+__global__ void setup_kernel(curandState *state, int seed, int n) {
+
+    int id = threadIdx.x + blockIdx.x*blockDim.x;
+
+    if(id < n){
+        curand_init(seed, id, 0, &state[id]);
+    }
+}
+
+__global__ void generate_uniform_kernel(curandState *state, float *result, int n){
+
+    int id = threadIdx.x + blockIdx.x*blockDim.x;
+    float x;
+
+    if(id < n){
+        curandState localState = state[id];
+        x = curand_uniform(&localState);
+        state[id] = localState;
+        result[id] = x;
+    }
+}
+
+void pointGeneration(int *d_random_points_x, int *d_random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+    curandState *devStates;
+    float *devResults, *hostResults;
+
+    int n = tile_x * tile_y;
+    int blockSize = 256;
+
+    int nBlocks = DIV_CEIL(n, blockSize);//n/blockSize + (n%blockSize == 0?0:1);
+
+    printf("\nn: %d, blockSize: %d, nBlocks: %d, seed: %d\n", n, blockSize, nBlocks, seed);
+
+    hostResults = (float *)calloc(n, sizeof(float));
+    cudaMalloc((void **)&devResults, n*sizeof(float));
+
+    cudaMalloc((void **)&devStates, n*sizeof(curandState));
+    setup_kernel<<<nBlocks, blockSize>>>(devStates, seed, n);
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+
+    generate_uniform_kernel<<<nBlocks, blockSize>>>(devStates, devResults, n);
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+
+    cudaMemcpy(hostResults, devResults, n*sizeof(float), cudaMemcpyDeviceToHost);
+
+    for(int i=0; i<n; i++) {
+        printf("\n%10.13f", hostResults[i]);
+    }
+
+    cudaFree(devStates);
+    cudaFree(devResults);
+    free(hostResults);
+
+}
 
 
 // Creates Worley Noise according to the options
@@ -38,10 +259,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 
 	// Random points
 	size_t random_points_size = tile_x * tile_y * points_per_tile * sizeof(int);
-	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	// Generate random points
-	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
 	jbutil::image<int> image_out = jbutil::image<int>(height, width, 1, 255);
 
@@ -52,9 +269,15 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 	gpuErrchk( cudaMalloc((void**) &d_random_points_x, random_points_size) );
 	gpuErrchk( cudaMalloc((void**) &d_random_points_y, random_points_size) );
 
-	// Copying data to device
-	gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
-	gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
+//	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+//	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+//	// Generate random points
+//	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
+
+//	 Copying data to device
+//	gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
+//	gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
+	pointGeneration(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
 
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
@@ -91,8 +314,8 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 		}
 	}
 
-	free(random_points_x);
-	free(random_points_y);
+//	free(random_points_x);
+//	free(random_points_y);
 
 	// stop timer
 	t = jbutil::gettime() - t;
@@ -209,164 +432,4 @@ void printHelp(char *input) {
 			  << "./WorleySerial out.pgm --width 2500 --breadth 1500 --seed 34534 --pptile 5 --intensity 1.5 --sharedmemory\n"
 			  << "./WorleySerial out.pgm -w 500 -b 500 -p 5 -t 256 --sharedmemory\n"
 			  << "./WorleySerial out.pgm -p 5 --reverse\n";
-}
-
-// Main program entry point
-int main (int argc, char **argv) {
-
-#ifdef RUNTESTS
-	// Run test cases in Debug mode
-	runTests();
-
-#else
-	// Default
-	char const *out = "out.pgm";
-	int width = 2000;
-	int height = 2500;
-	int tile_size = 512;
-	int points_per_tile = 5;
-	float intensity = 1;
-	int seed = 0;
-	bool inverse = false;
-	bool performance = false;
-	bool shared_memory = false;
-	bool fast_math = false;
-
-//	char const *out = "out2.pgm";
-//	int width = 8000;
-//	int height = 8000;
-//	int tile_size = 512;
-//	int points_per_tile = 64;
-//	float intensity = 1;
-//	int seed = 234723;
-//	bool inverse = false;
-//	bool performance = false;
-//	bool shared_memory = true;
-//	bool fast_math = true;
-
-	int index;
-	int c;
-
-    static struct option long_options[] = {
-        {"width",        required_argument, 0,  'w' },
-        {"breadth",      required_argument, 0,  'b' },
-        {"tilesize",     required_argument, 0,  't' },
-        {"pptile",       required_argument, 0,  'p' },
-        {"intensity",    required_argument, 0,  'i' },
-        {"seed",         required_argument, 0,  's' },
-        {"reverse",      no_argument, 		0,  'r' },
-        {"help",         no_argument,       0,  'h' },
-        {"performance",  no_argument,       0,  'k' },
-        {"sharedmemory",  no_argument,      0,  'z' },
-        {"fastmath",  	no_argument,      0,  'f' },
-        {0,           	 0,                 0,  0   }
-    };
-
-    int long_index =0;
-    while ((c = getopt_long(argc, argv, "w:b:t:p:i:s:d:rhkzf",
-                   long_options, &long_index )) != -1) {
-    	switch (c) {
-			case 'h':
-			{
-				printHelp(argv[0]);
-				return 0;
-			}
-			case 'w':
-			{
-				int tmp = atoi(optarg);
-
-				if(tmp > 0) {
-					width = tmp;
-				} else {
-					std::cout << "Width must be > 0\n";
-				}
-				break;
-			}
-			case 'b':
-			{
-				int tmp = atoi(optarg);
-
-				if(tmp > 0) {
-					height = tmp;
-				} else {
-					std::cout << "height must be > 0\n";
-				}
-				break;
-			}
-			case 't':
-			{
-				int tmp = atoi(optarg);
-
-				if(tmp > 0) {
-					tile_size = tmp;
-				} else {
-					std::cout << "tile size must be > 0\n";
-				}
-				break;
-			}
-			case 'p':
-			{
-				int tmp = atoi(optarg);
-
-				if(tmp > 0 && tmp <= 113) {
-					points_per_tile = tmp;
-				} else {
-					std::cout << "points per tile must be between 1 and 113 (both inclusive)\n";
-				}
-				break;
-			}
-			case 'i':
-			{
-				float tmp = atof(optarg);
-
-				if(tmp >= 1) {
-					intensity = tmp;
-				} else {
-					std::cout << "intensity must be >= 1\n";
-				}
-				break;
-			}
-			case 's':
-				seed = atoi(optarg);
-				break;
-			case 'r':
-				inverse = true;
-				break;
-			case 'k':
-				performance = true;
-				break;
-			case 'f':
-				fast_math = true;
-				break;
-			case 'z':
-				shared_memory = true;
-				break;
-			case '?':
-				if (optopt == 'w' || optopt == 'b' || optopt == 't' || optopt == 'p' || optopt == 'i' || optopt == 's' || optopt == 'd')
-					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-				else
-				if (isprint (optopt))
-					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-				else
-					fprintf (stderr,
-							"Unknown option character `\\x%x'.\n",
-							optopt);
-				return 1;
-			default:
-				abort ();
-		}
-	}
-
-	for (index = optind; index < argc; index++) {
-		out = argv[index];
-	}
-
-	if(performance) {
-		// No outputs
-		PerformanceCheck(width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
-	} else {
-		WorleyNoise(out, width, height, tile_size, points_per_tile, intensity, seed, inverse, shared_memory, fast_math);
-	}
-#endif
-	return 0;
 }

@@ -9,6 +9,8 @@
 #include "jbutil.h"
 #include "WorleyParallel.h"
 #include "main.h"
+#include <curand_kernel.h>
+
 
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
@@ -184,3 +186,24 @@ void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::r
 		}
 	}
 }
+
+
+
+// Fills random_points_x and random_points_y with random numbers
+// random_points_x and random_points_y should have enough space to be filled with (tile_x * tile_y * points_per_tile) random numbers
+__global__ void randomPointGenerationKernel(int *random_points_x, int *random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
+	assert(random_points_x != nullptr && random_points_y != nullptr);
+	assert(tile_x > 0 && tile_y > 0);
+	assert(tile_size > 0);
+	assert(points_per_tile > 0);
+
+	for(int x = 0; x < tile_x; x++) {
+		for(int y = 0; y < tile_y; y++) {
+			for(int z = 0; z < points_per_tile; z++) {
+//				random_points_x[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(x * tile_size, (x + 1) * tile_size);
+//				random_points_y[position3D(x, y, z, tile_x, tile_y)] = (int) rand.fval(y * tile_size, (y + 1) * tile_size);
+			}
+		}
+	}
+}
+

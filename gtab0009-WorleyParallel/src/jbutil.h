@@ -555,6 +555,7 @@ public:
       {
       return 5.42101086242752217E-20 * ival64();
       }
+   // [a, b)
    inline double fval(double a, double b)
       {
       return fval() * (b - a) + a;
