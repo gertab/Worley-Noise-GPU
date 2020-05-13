@@ -13,9 +13,28 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+#include <iostream>
+
+__global__ void hello(int* value) {
+	printf("[%d]\n", *value);
+    *value = *value+1;
+	printf("[%d]\n", *value);
+}
+
+int main() {
+	int* d_testPtr;
+	int value = 1;
+
+	cudaMalloc((void **)&d_testPtr, sizeof(int));
+	cudaMemcpy(d_testPtr, &value, sizeof(int), cudaMemcpyHostToDevice);
+    hello<<<1, 1>>>(d_testPtr);
+	cudaMemcpy(&value, d_testPtr, sizeof(int), cudaMemcpyDeviceToHost);
+//    cudaDeviceSynchronize();
+	std::cout << value << std::endl;
+}
 
 // Main program entry point
-int main (int argc, char **argv) {
+int main2 (int argc, char **argv) {
 
 #ifdef RUNTESTS
 	// Run test cases in Debug mode
