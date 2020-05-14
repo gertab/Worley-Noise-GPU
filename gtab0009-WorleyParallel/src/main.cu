@@ -22,29 +22,17 @@ int main (int argc, char **argv) {
 
 #else
 	// Default
-//	char const *out = "out.pgm";
-//	int width = 2000;
-//	int height = 2500;
-//	int tile_size = 512;
-//	int points_per_tile = 5;
-//	float intensity = 1;
-//	int seed = 0;
-//	bool inverse = false;
-//	bool performance = false;
-//	bool shared_memory = false;
-//	bool fast_math = false;
-
 	char const *out = "out.pgm";
-	int width = 8000;
-	int height = 8000;
+	int width = 2000;
+	int height = 2500;
 	int tile_size = 512;
-	int points_per_tile = 16;
+	int points_per_tile = 5;
 	float intensity = 1;
-	int seed = 234723;
+	int seed = 0;
 	bool inverse = false;
-	bool performance = true;
+	bool performance = false;
 	bool shared_memory = false;
-	bool fast_math = true;
+	bool fast_math = false;
 
 	int index;
 	int c;
@@ -322,10 +310,6 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 
 	int count = 0;
 
-//	// Warmup
-//	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-//	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
-
 	// Loop for at least 60 seconds
 	while((jbutil::gettime() - t) < 60) {
 		count++;
@@ -368,7 +352,7 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 
 	// show time taken
 	std::cout << "\n\n";
-	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << "s" << std::endl;
+	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << " s" << std::endl;
 }
 
 void printHelp(char *input) {

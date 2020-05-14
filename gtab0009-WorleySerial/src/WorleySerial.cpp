@@ -184,7 +184,7 @@ void PerformanceCheck(const int width, const int height,
 	t = jbutil::gettime() - t;
 	// show time taken
 	std::cout << "\n\n";
-	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << "s" << std::endl;
+	std::cerr << "Ran " << count << " iterations in " << t << "s. Average time taken: " << t / count << " s" << std::endl;
 }
 
 void printHelp(char *input) {
