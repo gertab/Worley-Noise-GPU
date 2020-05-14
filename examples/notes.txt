@@ -1,0 +1,7 @@
+a
+./WorleyParallel --tilesize 256 --pptile 1
+./WorleyParallel --tilesize 256 --pptile 5
+
+b
+ ./gtab0009-WorleyParallel --intensity 1
+ ./gtab0009-WorleyParallel --intensity 1.5
