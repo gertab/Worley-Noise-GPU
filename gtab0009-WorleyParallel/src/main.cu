@@ -13,28 +13,8 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-#include <iostream>
-
-__global__ void hello(int* value) {
-	printf("[%d]\n", *value);
-    *value = *value+1;
-	printf("[%d]\n", *value);
-}
-
-int main() {
-	int* d_testPtr;
-	int value = 1;
-
-	cudaMalloc((void **)&d_testPtr, sizeof(int));
-	cudaMemcpy(d_testPtr, &value, sizeof(int), cudaMemcpyHostToDevice);
-    hello<<<1, 1>>>(d_testPtr);
-	cudaMemcpy(&value, d_testPtr, sizeof(int), cudaMemcpyDeviceToHost);
-//    cudaDeviceSynchronize();
-	std::cout << value << std::endl;
-}
-
 // Main program entry point
-int main2 (int argc, char **argv) {
+int main (int argc, char **argv) {
 
 #ifdef RUNTESTS
 	// Run test cases in Debug mode
@@ -80,7 +60,6 @@ int main2 (int argc, char **argv) {
         {"help",         no_argument,       0,  'h' },
         {"performance",  no_argument,       0,  'k' },
         {"sharedmemory", no_argument,       0,  'z' },
-//        {"constantmemory",no_argument,      0,  'c' },
         {"fastmath",  	 no_argument,       0,  'f' },
         {0,           	 0,                 0,  0   }
     };
@@ -341,33 +320,6 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 	// start timer
 	double t = jbutil::gettime();
 
-	if(false) {
-		// Generate random number on the host and transfer results to device
-
-		int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-		int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-		// Generate random points
-		randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
-
-		// Copying data to device
-		gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
-		gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
-
-		free(random_points_x);
-		free(random_points_y);
-	} else {
-		// Generate random number directly on device
-
-		generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
-	}
-    gpuErrchk( cudaDeviceSynchronize() );
-
-	// stop timer
-	t = jbutil::gettime() - t;
-
-	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
-	dim3 blocks(32, 32);
-
 	int count = 0;
 
 //	// Warmup
@@ -375,8 +327,31 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 //	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 
 	// Loop for at least 60 seconds
-//	while((jbutil::gettime() - t) < 60) {
+	while((jbutil::gettime() - t) < 60) {
 		count++;
+
+		if(false) {
+			// Generate random number on the host and transfer results to device
+
+			random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+			random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+			// Generate random points
+			randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
+
+			// Copying data to device
+			gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
+			gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
+
+			free(random_points_x);
+			free(random_points_y);
+		} else {
+			// Generate random number directly on device
+
+			generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
+		}
+
+		dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
+		dim3 blocks(32, 32);
 
 		if(shared_memory) {
 		    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
@@ -386,8 +361,10 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 		}
 
 		gpuErrchk( cudaDeviceSynchronize() );
-//	}
+	}
 
+	// stop timer
+	t = jbutil::gettime() - t;
 
 	// show time taken
 	std::cout << "\n\n";

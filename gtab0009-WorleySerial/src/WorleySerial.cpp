@@ -154,11 +154,7 @@ void PerformanceCheck(const int width, const int height,
 
 	jbutil::randgen rand(seed);
 
-	// Random points
-	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-	// Generate random points
-	randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
+	int *random_points_x, *random_points_y;
 
 	// start timer w/o random point generation
 	double t = jbutil::gettime();
@@ -168,16 +164,21 @@ void PerformanceCheck(const int width, const int height,
 	// Loop for at least 60s
 	while((jbutil::gettime() - t) < 60) {
 		count++;
+		// Random points
+		random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+		random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
+		// Generate random points
+		randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
 
 		for(int x = 0; x < width; x++) {
 			for(int y = 0; y < height; y++) {
 				normDistanceFromNearestPoint(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 			}
 		}
-	}
 
-	free(random_points_x);
-	free(random_points_y);
+		free(random_points_x);
+		free(random_points_y);
+	}
 
 	// stop timer
 	t = jbutil::gettime() - t;
