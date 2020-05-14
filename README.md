@@ -1,8 +1,7 @@
 # Worley-Noise-GPU
+
 A parallel implementation of the Worley Noise on GPU
 
-
-Pixels per tile
 1 Pixel/Tile | 5 Pixels/Tile
 :-------------------------:|:-------------------------:
 ![Image description](examples/aPPtile1.png)  |  ![Image description](examples/aPPtile5.png)
