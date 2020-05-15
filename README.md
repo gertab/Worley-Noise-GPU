@@ -8,7 +8,7 @@ A parallel implementation of the Worley Noise on GPU
 
 Intensity = 1 | Intensity = 1.5
 :-------------------------:|:-------------------------:
-![Image description](examples/bIntensity1.png) | ![Image description](examples/bIntensity1.5.png)
+![Image description](examples/bIntensity1.jpeg) | ![Image description](examples/bIntensity1.5.jpeg)
 
 Normal | Reverse
 :-------------------------:|:-------------------------:
