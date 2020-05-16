@@ -187,7 +187,7 @@ void randomPointGeneration(int *random_points_x, int *random_points_y, jbutil::r
 	}
 }
 
-// Generates random points on the deivice
+// Generates random points on the device
 void generateRandomPointOnDevice(int *d_random_points_x, int *d_random_points_y, int seed, int tile_x, int tile_y, int tile_size, int points_per_tile) {
 	dim3 grid(DIV_CEIL(tile_x, 16), DIV_CEIL(tile_y, 16));
 	dim3 blocks(16, 16);
@@ -257,8 +257,6 @@ __global__ void generateRandomPointsKernel(int *d_random_points_x, int *d_random
     curandState state;
 
 	curand_init(seed, id, 0, &state);
-
-//	int x_res[points_per_tile];
 
 	for(int z = 0; z < points_per_tile; z++) {
 

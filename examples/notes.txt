@@ -5,3 +5,6 @@ a
 b
  ./gtab0009-WorleyParallel --intensity 1
  ./gtab0009-WorleyParallel --intensity 1.5
+
+c
+ ./gtab0009-WorleyParallel --reverse

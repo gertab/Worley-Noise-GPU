@@ -334,8 +334,9 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 			generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
 		}
 
-		dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
-		dim3 blocks(32, 32);
+		int block_width = 32;
+		dim3 grid(DIV_CEIL(width, block_width), DIV_CEIL(height, block_width));
+		dim3 blocks(block_width, block_width);
 
 		if(shared_memory) {
 		    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
