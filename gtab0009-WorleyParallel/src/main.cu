@@ -162,7 +162,7 @@ int main (int argc, char **argv) {
 }
 
 
-// Creates Worley Noise according to the options
+// Creates Worley Noise depending on the options
 void WorleyNoise(const std::string outfile, const int width, const int height, const int tile_size,
 		const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, const bool fast_math) {
 
@@ -198,25 +198,8 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 	gpuErrchk( cudaMalloc((void**) &d_random_points_x, random_points_size) );
 	gpuErrchk( cudaMalloc((void**) &d_random_points_y, random_points_size) );
 
-	if(false) {
-		// Generate random number on the host and transfer results to device
-
-		int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-		int *random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
-		// Generate random points
-		randomPointGeneration(random_points_x, random_points_y, rand, tile_x, tile_y, tile_size, points_per_tile);
-
-		// Copying data to device
-		gpuErrchk( cudaMemcpy(d_random_points_x, random_points_x, random_points_size, cudaMemcpyHostToDevice) );
-		gpuErrchk( cudaMemcpy(d_random_points_y, random_points_y, random_points_size, cudaMemcpyHostToDevice) );
-
-		free(random_points_x);
-		free(random_points_y);
-	} else {
-		// Generate random number directly on device
-
-		generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
-	}
+	// Generate random number directly on device
+	generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
 
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
@@ -228,15 +211,15 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 		}
 		std::cout << "\n";
 
-	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int); // 2: {x, y}, 9: neigbouring tiles
     	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result, fast_math);
 	} else  {
 		std::cout << "Without using shared memory\n";
 		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 	}
 
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
+//    gpuErrchk( cudaPeekAtLastError() );
+//    gpuErrchk( cudaDeviceSynchronize() );
 
     // Copy result back to host from device
 	int *result = (int *) malloc(res_size);
@@ -314,9 +297,12 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 	while((jbutil::gettime() - t) < 60) {
 		count++;
 
-		if(false) {
-			// Generate random number on the host and transfer results to device
+		if(true) {
+			// Generate random number directly on device
+			generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
 
+		} else {
+			// Generate random number on the host and transfer results to device
 			random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 			random_points_y = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
 			// Generate random points
@@ -328,10 +314,6 @@ void PerformanceCheck(const int width, const int height, const int tile_size, co
 
 			free(random_points_x);
 			free(random_points_y);
-		} else {
-			// Generate random number directly on device
-
-			generateRandomPointOnDevice(d_random_points_x, d_random_points_y, seed, tile_x, tile_y, tile_size, points_per_tile);
 		}
 
 		int block_width = 32;

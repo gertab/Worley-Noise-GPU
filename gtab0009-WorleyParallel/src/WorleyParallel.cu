@@ -5,13 +5,10 @@
 // Description : Worley noise simulation
 //============================================================================
 
-
 #include "jbutil.h"
 #include "WorleyParallel.h"
 #include "main.h"
 #include <curand_kernel.h>
-
-
 
 // Works the normalized distances from closest pixel (x, y) to the nearest point from (random_point_x, random_point_y)
 __global__ void normDistanceFromNearestPoint(int width, int height, int *random_points_x, int *random_points_y, int tile_size, int points_per_tile, float intensity, int *result) {
@@ -236,7 +233,7 @@ __global__ void generateRandomPointsKernel2(int *d_random_points_x, int *d_rando
 	}
 }
 
-
+// Kernel to generate random points using cuRAND
 __global__ void generateRandomPointsKernel(int *d_random_points_x, int *d_random_points_y, int seed, int tile_size, int tile_x, int tile_y, int points_per_tile){
 	assert(d_random_points_x != nullptr && d_random_points_y != nullptr);
 	assert(tile_x > 0 && tile_y > 0);

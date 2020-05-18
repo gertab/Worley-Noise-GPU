@@ -27,16 +27,13 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 // Convert 3D position to the corresponding flattened 1D array position
 #define position3D(x, y, z, WIDTH, HEIGHT, DEPTH) (DEPTH * WIDTH * y + DEPTH * x + z)
 //#define position3D(x, y, z, WIDTH, HEIGHT, DEPTH) (HEIGHT*WIDTH*z + WIDTH*y + x)
+
+// Convert 2D position to the corresponding flattened 1D array position
 #define position2D(x, y, WIDTH, HEIGHT) (WIDTH * y + x)
 
 // ceil( x / y )
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
 
-enum MEMORY {
-	shared,
-	constant,
-	naive
-};
 void printHelp(char *input);
 void WorleyNoise(const std::string outfile, const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, bool fast_math = false);
 void PerformanceCheck(const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, const bool fast_math);

@@ -31,14 +31,11 @@ void test1() {
 	int tile_size = 32;
 	int points_per_tile = 1;
 	float intensity = 1;
-	int seed = 123;
 
 	int tile_x = DIV_CEIL(width, tile_size);
 	assert(tile_x == 1);
 	int tile_y = DIV_CEIL(height, tile_size);
 	assert(tile_y == 1);
-
-	jbutil::randgen rand(seed);
 
 	// Random points
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
@@ -70,13 +67,12 @@ void test1() {
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
 
-		// Shared memory
-	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
+	// Shared memory
+	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
 
-		// No shared memory
-		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
-
+	// No shared memory
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -116,14 +112,11 @@ void test2() {
 	int tile_size = 32;
 	int points_per_tile = 2;
 	float intensity = 1;
-	int seed = 123;
 
 	int tile_x = DIV_CEIL(width, tile_size);
 	assert(tile_x == 1);
 	int tile_y = DIV_CEIL(height, tile_size);
 	assert(tile_y == 1);
-
-	jbutil::randgen rand(seed);
 
 	// Random points
 	int *random_points_x = (int *) malloc(tile_x * tile_y * points_per_tile * sizeof(int));
@@ -158,13 +151,12 @@ void test2() {
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
 
-		// Shared memory
-	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
+	// Shared memory
+	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
 
-		// No shared memory
-		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
-
+	// No shared memory
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -234,13 +226,12 @@ void test3() {
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
 
-		// Shared memory
-	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
+	// Shared memory
+	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
 
-		// No shared memory
-		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
-
+	// No shared memory
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
 
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
@@ -313,12 +304,12 @@ void test4() {
 	dim3 grid(DIV_CEIL(width, 32), DIV_CEIL(height, 32));
 	dim3 blocks(32, 32);
 
-		// Shared memory
-	    int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
-	    normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
+	// Shared memory
+	int sharedMemory = 2 * 9 * points_per_tile * sizeof(int);
+	normDistanceFromNearestPointSharedMemory<<<grid, blocks, sharedMemory>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_shared_mem);
 
-		// No shared memory
-		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
+	// No shared memory
+	normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result_no_shared_mem);
 
 
     gpuErrchk( cudaPeekAtLastError() );
@@ -332,7 +323,7 @@ void test4() {
 
 	for(int x = 0; x < width; x++) {
 		for(int y = 0; y < height; y++) {
-			int point_no_shared = result_no_shared_mem[position2D(x, y, width, height)];
+//			int point_no_shared = result_no_shared_mem[position2D(x, y, width, height)];
 			int point_shared = result_shared_mem[position2D(x, y, width, height)];
 
 			int p = normDistanceFromNearestPointSerialImplementation(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);

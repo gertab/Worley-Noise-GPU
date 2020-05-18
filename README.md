@@ -48,3 +48,7 @@ The speedups (compared to the serial implementation) for the same configurations
 | Parallel – Initial [GTX1050] | x29.5 | x30.7 | x38.8 |
 | Parallel – Optimized [GTX1050] | x31.7 | x32.1 | x30.9 |
 | Parallel – Optimized [TITAN Black] | x74.3 | x82.6 | x84.3 |
+
+## Licence
+
+Worley Noise GPU is distributed under the GPL-3.0 licence.
