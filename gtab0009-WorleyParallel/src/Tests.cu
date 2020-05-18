@@ -328,7 +328,6 @@ void test4() {
 
 			int p = normDistanceFromNearestPointSerialImplementation(x, y, width, height, random_points_x, random_points_y, tile_size, points_per_tile, intensity);
 
-//			assert(p == point_no_shared);
 			assert(p == point_shared);
 		}
 	}

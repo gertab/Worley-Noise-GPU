@@ -35,6 +35,3 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 #define DIV_CEIL(x, y) ((x + y - 1) / y)
 
 void printHelp(char *input);
-void WorleyNoise(const std::string outfile, const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, bool fast_math = false);
-void PerformanceCheck(const int width, const int height, const int tile_size, const int points_per_tile, const float intensity, int seed, const bool reverse, const bool shared_memory, const bool fast_math);
-
