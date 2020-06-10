@@ -49,6 +49,19 @@ The speedups (compared to the serial implementation) for the same configurations
 | Parallel – Optimized [GTX1050] | x31.7 | x32.1 | x30.9 |
 | Parallel – Optimized [TITAN Black] | x74.3 | x82.6 | x84.3 |
 
+## Running the program
+
+This project is built and packaged using __Nsight Eclipse__ version __9.2__ & Cuda version 10.2.
+
+There are three build configurations: Release, Debug and Tests.
+
+To run this project outside an Nsight environment, run `make` inside the `/Demo` folder to get an executable file.
+
 ## Licence
 
 Worley Noise GPU is distributed under the GPL-3.0 licence.
+
+## Credits
+
+JButil for PGM image processing.  
+[GMP](https://gmplib.org/) for the serial arithmetic library.
