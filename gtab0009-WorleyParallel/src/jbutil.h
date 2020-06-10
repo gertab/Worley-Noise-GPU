@@ -44,16 +44,6 @@ const double pi = 3.14159265358979323846;
 
 // @}
 
-/*! \name Math functions */
-//
-//template <class real>
-//inline int round(real x)
-//   {
-//   return int(floor(x + 0.5));
-//   }
-
-// @}
-
 /*! \name Error handling */
 
 // An assertion that is implemented even in release builds

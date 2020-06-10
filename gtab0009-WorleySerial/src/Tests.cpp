@@ -10,11 +10,12 @@
 
 void runTests() {
 	std::cout << "Running test cases\n";
+
 	test1();
 	test2();
-
 	testDIVCEIL();
 	testPosition3D();
+
 	std::cout << "End of tests. No problems found.\n";
 }
 

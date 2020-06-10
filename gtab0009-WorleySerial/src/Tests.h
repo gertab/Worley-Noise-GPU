@@ -5,7 +5,6 @@
 // Description : Test file header
 //============================================================================
 
-
 void runTests();
 void test1();
 void test2();
