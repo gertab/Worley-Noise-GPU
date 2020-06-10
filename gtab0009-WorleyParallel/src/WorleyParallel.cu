@@ -66,9 +66,6 @@ void WorleyNoise(const std::string outfile, const int width, const int height, c
 		normDistanceFromNearestPoint<<<grid, blocks>>>(width, height, d_random_points_x, d_random_points_y, tile_size, points_per_tile, intensity, d_result);
 	}
 
-//    gpuErrchk( cudaPeekAtLastError() );
-//    gpuErrchk( cudaDeviceSynchronize() );
-
     // Copy result back to host from device
 	int *result = (int *) malloc(res_size);
 	gpuErrchk( cudaMemcpy(result, d_result, res_size, cudaMemcpyDeviceToHost) );
