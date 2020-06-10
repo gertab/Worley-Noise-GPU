@@ -64,4 +64,3 @@ Worley Noise GPU is distributed under the GPL-3.0 licence.
 ## Credits
 
 JButil for PGM image processing.  
-[GMP](https://gmplib.org/) for the serial arithmetic library.
